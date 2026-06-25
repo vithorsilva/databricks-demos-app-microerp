@@ -1,2 +1,2 @@
-URL_HOST = https://adb-954340202698138.18.azuredatabricks.net/
+URL_HOST = https://SEU-WORKSPACE.azuredatabricks.net/
 NOME_PROFILE = dex-producao 

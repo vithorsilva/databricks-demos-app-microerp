@@ -30,8 +30,10 @@ resources:
 targets:
   default:
     default: true
-    workspace:
-      host: https://adb-954340202698138.18.azuredatabricks.net
+    # O host do workspace vem do perfil da CLI (ex.: `databricks bundle deploy --profile dex-producao`).
+    # Para fixar um host neste arquivo, descomente e ajuste:
+    # workspace:
+    #   host: https://SEU-WORKSPACE.azuredatabricks.net
 
     variables:
       postgres_project: projects/db-demo-microerp-dex
