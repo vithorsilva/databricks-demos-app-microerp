@@ -55,3 +55,29 @@ Nome do arquivo SQL caso haja alteração no schema do banco:
 ## Exemplo
 
 `specs/todos.md` — documenta o feature existente e serve como referência.
+
+## Convenções de Lakebase (toda feature com banco)
+
+Features que criam tabelas no Lakebase (Postgres) devem seguir estas regras — descobertas em
+produção e detalhadas no [README principal](../README.md#lakebase-ordem-de-implantação-leia-antes-do-primeiro-deploy):
+
+### 1. Ownership de schema é do Service Principal
+
+Schemas são criados no boot via `ensureSchema()` (`CREATE SCHEMA IF NOT EXISTS ...`). **Quem roda
+esse comando primeiro vira dono.** Como o SP só tem `CAN_CONNECT_AND_CREATE` (não acessa schemas
+de outra role), o schema **precisa ser criado pelo SP** — ou seja, **faça deploy antes de rodar
+local**. Rodar `npm run dev` antes do primeiro deploy faz sua identidade virar dona do schema, e a
+app deployada quebra com `permission denied for schema <schema>` (`42501`).
+
+### 2. Tipos de coluna ↔ schema Zod: cuidado com datas
+
+O driver `pg` converte `TIMESTAMPTZ`/`TIMESTAMP` em objeto `Date` do JavaScript. Se o schema Zod
+declara o campo como `z.string()` (o padrão neste projeto — ver `created_at` em `TodoSchema`), o
+`.parse(row)` no repository **falha com `ZodError`** ("expected string, received Date").
+
+**Regra:** no repository, retorne colunas temporais já como texto via cast SQL `coluna::text`
+(ex.: `SELECT id, title, completed, created_at::text FROM app.todos`). Isso mantém o schema Zod
+como fonte única de verdade (`z.string()`) sem transformar a row no código. Aplique o cast em
+**todas** as queries que retornam a coluna (SELECT, INSERT ... RETURNING, UPDATE ... RETURNING).
+
+Registre essas duas decisões nas seções **Data Model** e **Migration** da spec da feature.

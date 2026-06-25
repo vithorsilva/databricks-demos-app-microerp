@@ -34,6 +34,59 @@ DATABRICKS_APP_PORT=8000
 
 The Lakebase plugin requires additional environment variables for PostgreSQL connectivity. To learn how to configure the Lakebase plugin, see the [Lakebase plugin documentation](https://www.databricks.com/devhub/docs/appkit/v0/plugins/lakebase).
 
+## Lakebase: ordem de implantação (leia antes do primeiro deploy)
+
+> **Regra de ouro: faça o deploy da app ANTES de rodá-la localmente (`npm run dev`).**
+
+O Service Principal (SP) da app tem permissão `CAN_CONNECT_AND_CREATE` no Postgres
+(ver `databricks.yml`): ele pode **criar** objetos novos, mas **não acessa schemas que
+pertencem a outra role**. No boot, `TodoRepository.ensureSchema()` roda
+`CREATE SCHEMA IF NOT EXISTS app` — e **quem roda esse comando primeiro vira dono do schema**.
+
+- Se o **deploy** for feito primeiro, o SP cria o schema `app` e vira dono → tudo funciona.
+- Se você rodar **localmente primeiro**, sua identidade de usuário cria o schema e vira dono.
+  Então a app deployada (que conecta como o SP) recebe `permission denied for schema app`
+  (código `42501`) e a tela `/todos` retorna `Internal server error`.
+
+### Recuperação do `permission denied for schema app`
+
+Se você caiu nesse estado (schema com dono errado), o schema precisa ser **dropado e recriado
+pelo SP**. A propriedade de schema no PostgreSQL é amarrada à role que o criou e não pode ser
+reatribuída por um usuário comum.
+
+> ⚠️ Dropar o schema apaga os dados nele. **Exporte antes se houver dados** (`pg_dump` ou cópia
+> para um schema temporário).
+
+1. **Drope o schema** (conecte com sua identidade; precisa de `databricks_superuser`):
+   ```sql
+   DROP SCHEMA IF EXISTS app CASCADE;
+   ```
+2. **Reinicie a app SEM nenhuma conexão sua no meio** — qualquer `CREATE SCHEMA` ou query de
+   inspeção entre o drop e o boot recria o schema como seu de novo:
+   ```bash
+   databricks apps stop my-microerp --profile <PROFILE>
+   databricks apps start my-microerp --profile <PROFILE>
+   ```
+3. **Confirme que o dono agora é o SP** — deve retornar o `service_principal_client_id`
+   (de `databricks apps get my-microerp`):
+   ```sql
+   SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = 'app';
+   ```
+4. Nos logs (`databricks apps logs my-microerp`) você deve ver
+   `[todos] Created schema and table app.todos`, sem `Database setup failed`.
+
+> `psql` não vem instalado por padrão no Windows. Para rodar SQL ad-hoc você pode usar
+> `databricks psql --project <PROJECT_ID> -- -c "<SQL>"` (requer `psql` no PATH), ou conectar
+> via qualquer cliente PostgreSQL usando o token de
+> `databricks postgres generate-database-credential <ENDPOINT> -o json` como senha.
+
+### Desenvolvimento local depois do primeiro deploy
+
+Para desenvolver localmente contra o banco já provisionado pelo SP, peça ao dono do projeto
+Lakebase o papel `databricks_superuser` para a sua identidade (criadores do projeto já têm).
+Ele concede acesso **DML** (ler/escrever dados) aos schemas que o SP é dono — **sem** torná-lo
+dono deles, evitando recair no problema acima.
+
 ### CLI Authentication
 
 The Databricks CLI requires authentication to deploy and manage apps. Configure authentication using one of these methods:
