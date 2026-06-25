@@ -14,12 +14,16 @@ import {
 } from '@databricks/appkit-ui/react';
 import { Menu } from 'lucide-react';
 import { TodosPage } from './features/todos/TodosPage';
+import { CrmPage } from './features/crm/CrmPage';
+import { ReceivablesPage } from './features/receivables/ReceivablesPage';
+import { PayablesPage } from './features/payables/PayablesPage';
+import { ColorBars, PageHeader } from '@/components/brand/index.js';
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
     isActive
       ? 'bg-primary text-primary-foreground'
-      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      : 'text-white/80 hover:bg-white/10 hover:text-white'
   }`;
 
 const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -37,8 +41,14 @@ function NavLinks({ className, linkClass, onClick }: { className?: string; linkC
       <NavLink to="/" end className={linkClass} onClick={onClick}>
         Home
       </NavLink>
-      <NavLink to="/todos" className={linkClass} onClick={onClick}>
-        Todos
+      <NavLink to="/crm" className={linkClass} onClick={onClick}>
+        CRM
+      </NavLink>
+      <NavLink to="/receivables" className={linkClass} onClick={onClick}>
+        A Receber
+      </NavLink>
+      <NavLink to="/payables" className={linkClass} onClick={onClick}>
+        A Pagar
       </NavLink>
     </nav>
   );
@@ -55,20 +65,24 @@ function Layout() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b px-4 md:px-6 py-3 flex items-center gap-4">
-        <h1 className="text-lg font-semibold text-foreground">my-microerp</h1>
+      <header
+        className="px-4 md:px-6 py-3 flex items-center gap-4 text-white"
+        style={{ background: 'var(--grad-header)' }}
+      >
+        {/* Logo DEX (versão branca) sobre a faixa azul/escura do header */}
+        <img src="/dex-branco-v-H.png" alt="DEX | Datasource Expert" className="h-7 w-auto" />
         {/* Desktop nav — hidden below md breakpoint */}
         <NavLinks className="hidden md:flex gap-1" linkClass={navLinkClass} />
         {/* Mobile nav — visible below md breakpoint */}
         <div className="ml-auto md:hidden">
           <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-            <Button variant="ghost" size="icon" onClick={() => setMobileNavOpen(true)}>
+            <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={() => setMobileNavOpen(true)}>
               <Menu className="h-5 w-5" />
               <span className="sr-only">Open navigation</span>
             </Button>
             <SheetContent side="left">
               <SheetHeader>
-                <SheetTitle>Navigation</SheetTitle>
+                <SheetTitle>Navegação</SheetTitle>
               </SheetHeader>
               <NavLinks className="flex flex-col gap-1" linkClass={mobileNavLinkClass} onClick={() => setMobileNavOpen(false)} />
             </SheetContent>
@@ -79,6 +93,8 @@ function Layout() {
       <main className="flex-1 p-4 md:p-6">
         <Outlet />
       </main>
+
+      <ColorBars />
     </div>
   );
 }
@@ -88,6 +104,9 @@ const router = createBrowserRouter([
     element: <Layout />,
     children: [
       { path: '/', element: <HomePage /> },
+      { path: '/crm', element: <CrmPage /> },
+      { path: '/receivables', element: <ReceivablesPage /> },
+      { path: '/payables', element: <PayablesPage /> },
       { path: '/todos', element: <TodosPage /> },
     ],
   },
@@ -99,42 +118,32 @@ export default function App() {
 
 function HomePage() {
   return (
-    <div className="max-w-2xl mx-auto space-y-6 mt-8">
-      <div className="text-center">
-        <h2 className="text-3xl font-bold mb-2 text-foreground">
-          Welcome to your Databricks App
-        </h2>
-        <p className="text-lg text-muted-foreground">
-          Powered by Databricks AppKit
-        </p>
-      </div>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <PageHeader title="Micro ERP DEX" subtitle="Gestão de clientes, contas a receber e contas a pagar." />
 
-      <Card className="shadow-lg">
+      <Card>
         <CardHeader>
-          <CardTitle>Getting Started</CardTitle>
+          <CardTitle>Módulos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-muted-foreground">Your app is ready. Explore the resources below to continue building.</p>
+          <p className="text-sm text-muted-foreground">
+            Use a navegação acima para acessar os módulos do ERP.
+          </p>
           <ul className="space-y-2 text-sm">
             <li>
-              <a
-                href="https://github.com/databricks/appkit"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-4 hover:text-primary/80"
-              >
-                AppKit on GitHub →
-              </a>
+              <NavLink to="/crm" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                CRM — empresas, contatos e pipeline →
+              </NavLink>
             </li>
             <li>
-              <a
-                href="https://www.databricks.com/devhub/docs/appkit/v0/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-4 hover:text-primary/80"
-              >
-                AppKit documentation →
-              </a>
+              <NavLink to="/receivables" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                Contas a Receber →
+              </NavLink>
+            </li>
+            <li>
+              <NavLink to="/payables" className="text-primary underline underline-offset-4 hover:text-primary/80">
+                Contas a Pagar →
+              </NavLink>
             </li>
           </ul>
         </CardContent>

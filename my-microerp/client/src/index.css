@@ -1,82 +1,65 @@
 @import "@databricks/appkit-ui/styles.css";
 
+/* ── Identidade Visual DEX (tema claro) ──────────────────────────────
+   Mapeamento dos tokens shadcn para a paleta da marca DEX.
+   Ver specs/feat_0005_design_system_dex.md. Somente tema claro. */
 :root {
-  /* --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.141 0.005 285.823);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.141 0.005 285.823);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.141 0.005 285.823);
-  --primary: oklch(0.21 0.006 285.885);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.967 0.001 286.375);
-  --muted-foreground: oklch(0.552 0.016 285.938);
-  --accent: oklch(0.967 0.001 286.375);
-  --accent-foreground: oklch(0.21 0.006 285.885);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
-  --success: oklch(0.603 0.135 166.892);
-  --success-foreground: oklch(1 0 0);
-  --warning: oklch(0.795 0.157 78.748);
-  --warning-foreground: oklch(0.199 0.027 238.732);
-  --border: oklch(0.92 0.004 286.32);
-  --input: oklch(0.92 0.004 286.32);
-  --ring: oklch(0.705 0.015 286.067);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-primary: oklch(0.21 0.006 285.885);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
-  --sidebar-border: oklch(0.92 0.004 286.32);
-  --sidebar-ring: oklch(0.705 0.015 286.067); */
-}
+  --radius: 6px;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* --background: oklch(0.141 0.005 285.823);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.21 0.006 285.885);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.21 0.006 285.885);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.92 0.004 286.32);
-    --primary-foreground: oklch(0.21 0.006 285.885);
-    --secondary: oklch(0.274 0.006 286.033);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.274 0.006 286.033);
-    --muted-foreground: oklch(0.705 0.015 286.067);
-    --accent: oklch(0.274 0.006 286.033);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --destructive-foreground: oklch(0.985 0 0);
-    --success: oklch(0.67 0.12 167);
-    --success-foreground: oklch(1 0 0);
-    --warning: oklch(0.83 0.165 85);
-    --warning-foreground: oklch(0.199 0.027 238.732);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.552 0.016 285.938);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.21 0.006 285.885);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.274 0.006 286.033);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.552 0.016 285.938); */
-  }
+  --background: #ffffff;
+  --foreground: #051a35;
+
+  --card: #ffffff;
+  --card-foreground: #051a35;
+  --popover: #ffffff;
+  --popover-foreground: #051a35;
+
+  --primary: #0d4a8b;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f4f5f8;
+  --secondary-foreground: #0d4a8b;
+
+  --muted: #f4f5f8;
+  --muted-foreground: #6b7080;
+
+  --accent: #ed1c24;
+  --accent-foreground: #ffffff;
+
+  --destructive: #ed1c24;
+  --destructive-foreground: #ffffff;
+
+  --success: #1d8a3e;
+  --success-foreground: #ffffff;
+  --warning: #d99000;
+  --warning-foreground: #051a35;
+
+  --border: #e8eaf0;
+  --input: #e8eaf0;
+  --ring: rgba(13, 74, 139, 0.15);
+
+  --chart-1: #0d4a8b;
+  --chart-2: #1565b8;
+  --chart-3: #ed1c24;
+  --chart-4: #1d8a3e;
+  --chart-5: #6b7080;
+
+  --sidebar: #f4f5f8;
+  --sidebar-foreground: #051a35;
+  --sidebar-primary: #0d4a8b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ed1c24;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #e8eaf0;
+  --sidebar-ring: rgba(13, 74, 139, 0.15);
+
+  /* ── Custom properties da marca DEX (uso pontual) ── */
+  --dex-blue: #0d4a8b;
+  --dex-blue-dark: #051a35;
+  --dex-red: #ed1c24;
+  --dex-red-deep: #c0141b;
+  --grad-header: linear-gradient(90deg, #0d4a8b 0%, #051a35 100%);
+  --grad-blue: linear-gradient(135deg, #0d4a8b 0%, #1565b8 100%);
+  --shadow-card: 0 1px 3px rgba(5, 26, 53, 0.08), 0 1px 2px rgba(5, 26, 53, 0.04);
+  --shadow-modal: 0 10px 40px rgba(5, 26, 53, 0.18);
 }

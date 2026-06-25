@@ -57,10 +57,10 @@ Nome do arquivo SQL caso haja alteração no schema do banco:
 | Arquivo | Domínio | Status |
 |---------|---------|--------|
 | [feat_0001_todos.md](feat_0001_todos.md) | Todos (CRUD de exemplo) | implementado |
-| [feat_0005_design_system_dex.md](feat_0005_design_system_dex.md) | Identidade visual DEX (tokens + componentes de marca) | spec |
-| [feat_0002_crm.md](feat_0002_crm.md) | CRM — empresas, contatos, pipeline | spec |
-| [feat_0003_accounts_receivable.md](feat_0003_accounts_receivable.md) | Contas a Receber (AR) | spec |
-| [feat_0004_accounts_payable.md](feat_0004_accounts_payable.md) | Contas a Pagar (AP) | spec |
+| [feat_0005_design_system_dex.md](feat_0005_design_system_dex.md) | Identidade visual DEX (tokens + componentes de marca) | implementado |
+| [feat_0002_crm.md](feat_0002_crm.md) | CRM — empresas, contatos, pipeline | implementado |
+| [feat_0003_accounts_receivable.md](feat_0003_accounts_receivable.md) | Contas a Receber (AR) | implementado |
+| [feat_0004_accounts_payable.md](feat_0004_accounts_payable.md) | Contas a Pagar (AP) | implementado |
 
 > Ordem de implementação (por dependência de FK): Design System → CRM → AR → AP.
 > `feat_0001_todos.md` documenta o feature existente e serve como referência de formato.
