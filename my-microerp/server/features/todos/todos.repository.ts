@@ -38,14 +38,14 @@ export class TodoRepository {
 
   async findAll(): Promise<Todo[]> {
     const { rows } = await this.db.query(
-      'SELECT id, title, completed, created_at FROM app.todos ORDER BY created_at DESC',
+      'SELECT id, title, completed, created_at::text FROM app.todos ORDER BY created_at DESC',
     );
     return rows.map((row) => TodoSchema.parse(row));
   }
 
   async create(title: string): Promise<Todo> {
     const { rows } = await this.db.query(
-      'INSERT INTO app.todos (title) VALUES ($1) RETURNING id, title, completed, created_at',
+      'INSERT INTO app.todos (title) VALUES ($1) RETURNING id, title, completed, created_at::text',
       [title],
     );
     return TodoSchema.parse(rows[0]);
@@ -53,7 +53,7 @@ export class TodoRepository {
 
   async toggleCompleted(id: number): Promise<Todo> {
     const { rows } = await this.db.query(
-      'UPDATE app.todos SET completed = NOT completed WHERE id = $1 RETURNING id, title, completed, created_at',
+      'UPDATE app.todos SET completed = NOT completed WHERE id = $1 RETURNING id, title, completed, created_at::text',
       [id],
     );
     if (rows.length === 0) throw new AppError(404, 'Todo not found');
