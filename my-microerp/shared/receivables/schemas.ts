@@ -11,6 +11,7 @@ export const ReceivableSchema = z.object({
   due_date: z.string(),
   status: ReceivableStatusEnum,
   paid_at: z.string().nullable(),
+  opportunity_id: z.number().int().positive().nullable(),
   created_at: z.string(),
 });
 

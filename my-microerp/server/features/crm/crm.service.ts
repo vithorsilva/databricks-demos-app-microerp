@@ -21,12 +21,17 @@ import type {
   ReorderStagesBody,
   CreateActivityBody,
   UpdateActivityBody,
+  WinOpportunityBody,
 } from '../../../shared/crm/types.js';
 import { AppError } from '../../lib/errors.js';
 import type { CrmRepository } from './crm.repository.js';
+import type { ReceivableService } from '../receivables/receivables.service.js';
 
 export class CrmService {
-  constructor(private readonly repo: CrmRepository) {}
+  constructor(
+    private readonly repo: CrmRepository,
+    private readonly receivables?: ReceivableService,
+  ) {}
 
   // Companies
   listCompanies(type?: CompanyType): Promise<Company[]> {
@@ -103,19 +108,49 @@ export class CrmService {
   }
 
   // Opportunities
-  listOpportunities(pipelineId?: number, status?: string): Promise<Opportunity[]> {
-    return this.repo.findOpportunities(pipelineId, status);
+  listOpportunities(pipelineId?: number, status?: string, companyId?: number): Promise<Opportunity[]> {
+    return this.repo.findOpportunities(pipelineId, status, companyId);
   }
 
   createOpportunity(body: CreateOpportunityBody): Promise<Opportunity> {
     return this.repo.createOpportunity({ ...body, title: body.title.trim() });
   }
 
-  updateOpportunity(id: number, body: UpdateOpportunityBody): Promise<Opportunity> {
+  async updateOpportunity(id: number, body: UpdateOpportunityBody): Promise<Opportunity> {
     if (body.status === 'lost' && body.lost_reason !== undefined && body.lost_reason !== null) {
       body = { ...body, lost_reason: body.lost_reason.trim() };
     }
-    return this.repo.updateOpportunity(id, body);
+    // Ao reabrir (won → open), remove os contas a receber pendentes gerados pela oportunidade.
+    let wasWon = false;
+    if (body.status === 'open' && this.receivables) {
+      wasWon = (await this.repo.getOpportunityById(id)).status === 'won';
+    }
+    const updated = await this.repo.updateOpportunity(id, body);
+    if (wasWon && this.receivables) {
+      await this.receivables.deletePendingByOpportunity(id);
+    }
+    return updated;
+  }
+
+  /** Marca como ganha e gera as parcelas (contas a receber) da oportunidade. */
+  async winOpportunity(id: number, body: WinOpportunityBody): Promise<Opportunity> {
+    const opp = await this.repo.getOpportunityById(id);
+    if (opp.status === 'won') throw new AppError(409, 'Oportunidade já está marcada como ganha');
+
+    const total = body.installments.reduce((sum, it) => sum + it.amount, 0);
+    if (total <= 0) throw new AppError(400, 'O total das parcelas deve ser maior que zero');
+
+    const updated = await this.repo.updateOpportunity(id, { status: 'won' });
+
+    if (this.receivables) {
+      const n = body.installments.length;
+      const items = body.installments.map((it, i) => ({
+        ...it,
+        description: it.description?.trim() || `${opp.title} — Parcela ${i + 1}/${n}`,
+      }));
+      await this.receivables.createForOpportunity(id, opp.company_id, items);
+    }
+    return updated;
   }
 
   reorderOpportunities(body: ReorderOpportunitiesBody): Promise<void> {

@@ -16,6 +16,8 @@ import type {
   OpportunitySchema,
   CreateOpportunityBodySchema,
   UpdateOpportunityBodySchema,
+  InstallmentSchema,
+  WinOpportunityBodySchema,
   ReorderOpportunitiesBodySchema,
   ActivitySchema,
   CreateActivityBodySchema,
@@ -61,6 +63,8 @@ export type ReorderStagesBody = z.infer<typeof ReorderStagesBodySchema>;
 export type Opportunity = z.infer<typeof OpportunitySchema>;
 export type CreateOpportunityBody = z.infer<typeof CreateOpportunityBodySchema>;
 export type UpdateOpportunityBody = z.infer<typeof UpdateOpportunityBodySchema>;
+export type Installment = z.infer<typeof InstallmentSchema>;
+export type WinOpportunityBody = z.infer<typeof WinOpportunityBodySchema>;
 export type ReorderOpportunitiesBody = z.infer<typeof ReorderOpportunitiesBodySchema>;
 
 export type Activity = z.infer<typeof ActivitySchema>;

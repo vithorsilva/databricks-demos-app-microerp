@@ -10,8 +10,10 @@ import type {
   InsightsResponse,
   CreateCompanyBody,
   CreateContactBody,
+  UpdateContactBody,
   CreateOpportunityBody,
   UpdateOpportunityBody,
+  WinOpportunityBody,
   CreateStageBody,
   UpdateStageBody,
   CreateActivityBody,
@@ -85,12 +87,25 @@ export function useContacts(companyId?: number) {
       .finally(() => setLoading(false));
   }, [companyId]);
 
-  const createContact = useCallback(async (body: CreateContactBody) => {
+  const createContact = useCallback(async (body: CreateContactBody): Promise<Contact | null> => {
     try {
       const created = await crmApi.createContact(body);
       setContacts((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      return created;
     } catch (e) {
       setError(msg(e, 'Failed to create contact'));
+      return null;
+    }
+  }, []);
+
+  const updateContact = useCallback(async (id: number, body: UpdateContactBody): Promise<Contact | null> => {
+    try {
+      const updated = await crmApi.updateContact(id, body);
+      setContacts((prev) => prev.map((c) => (c.id === id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name)));
+      return updated;
+    } catch (e) {
+      setError(msg(e, 'Failed to update contact'));
+      return null;
     }
   }, []);
 
@@ -103,7 +118,7 @@ export function useContacts(companyId?: number) {
     }
   }, []);
 
-  return { contacts, loading, error, createContact, deleteContact };
+  return { contacts, loading, error, createContact, updateContact, deleteContact };
 }
 
 /** Carrega os funis e expõe o funil atualmente selecionado + CRUD de funis/estágios. */
@@ -285,6 +300,20 @@ export function useBoard(pipelineId?: number) {
     [applyUpdated, reload]
   );
 
+  const winOpportunity = useCallback(
+    async (id: number, body: WinOpportunityBody) => {
+      try {
+        const updated = await crmApi.winOpportunity(id, body);
+        applyUpdated(updated);
+        return updated;
+      } catch (e) {
+        setError(msg(e, 'Falha ao marcar como ganha'));
+        return null;
+      }
+    },
+    [applyUpdated]
+  );
+
   /** Move otimista no estado e persiste via /reorder. `next` é a lista resultante. */
   const persistReorder = useCallback(
     async (next: Opportunity[], items: ReorderOpportunitiesBody['items']) => {
@@ -315,9 +344,43 @@ export function useBoard(pipelineId?: number) {
     reload,
     createOpportunity,
     updateOpportunity,
+    winOpportunity,
     persistReorder,
     deleteOpportunity,
   };
+}
+
+/** Todas as oportunidades de uma empresa (qualquer status) + reabrir uma fechada. */
+export function useCompanyOpportunities(companyId?: number) {
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(() => {
+    if (companyId === undefined) return;
+    crmApi
+      .listOpportunities({ companyId })
+      .then(setOpportunities)
+      .catch((e: unknown) => setError(msg(e, 'Falha ao carregar oportunidades')))
+      .finally(() => setLoading(false));
+  }, [companyId]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const reopen = useCallback(async (id: number) => {
+    try {
+      const updated = await crmApi.updateOpportunity(id, { status: 'open' });
+      setOpportunities((prev) => prev.map((o) => (o.id === id ? updated : o)));
+      return updated;
+    } catch (e) {
+      setError(msg(e, 'Falha ao reabrir oportunidade'));
+      return null;
+    }
+  }, []);
+
+  return { opportunities, loading, error, reload, reopen };
 }
 
 export function useActivities(opportunityId?: number) {

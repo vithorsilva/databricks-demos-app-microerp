@@ -144,6 +144,17 @@ export const UpdateOpportunityBodySchema = z.object({
     .nullish(),
 });
 
+// Parcela do contas a receber gerada ao ganhar uma oportunidade.
+export const InstallmentSchema = z.object({
+  description: z.string().max(500).optional(),
+  amount: z.number().positive('Valor deve ser maior que zero'),
+  due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
+});
+
+export const WinOpportunityBodySchema = z.object({
+  installments: z.array(InstallmentSchema).min(1, 'Informe ao menos uma parcela'),
+});
+
 export const ReorderOpportunitiesBodySchema = z.object({
   items: z
     .array(

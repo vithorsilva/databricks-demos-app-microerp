@@ -454,7 +454,7 @@ export class CrmRepository {
   }
 
   // ── Opportunities ────────────────────────────────────────
-  async findOpportunities(pipelineId?: number, status?: string): Promise<Opportunity[]> {
+  async findOpportunities(pipelineId?: number, status?: string, companyId?: number): Promise<Opportunity[]> {
     const params: unknown[] = [];
     const where: string[] = [];
     if (pipelineId !== undefined) {
@@ -465,6 +465,10 @@ export class CrmRepository {
       params.push(status);
       where.push(`o.status = $${params.length}`);
     }
+    if (companyId !== undefined) {
+      params.push(companyId);
+      where.push(`o.company_id = $${params.length}`);
+    }
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const { rows } = await this.db.query(
       `SELECT ${OPP_COLS} ${OPP_FROM} ${whereSql}
@@ -474,7 +478,7 @@ export class CrmRepository {
     return rows.map((r) => OpportunitySchema.parse(r));
   }
 
-  private async getOpportunityById(id: number): Promise<Opportunity> {
+  async getOpportunityById(id: number): Promise<Opportunity> {
     const { rows } = await this.db.query(`SELECT ${OPP_COLS} ${OPP_FROM} WHERE o.id = $1`, [id]);
     if (rows.length === 0) throw new AppError(404, 'Opportunity not found');
     return OpportunitySchema.parse(rows[0]);

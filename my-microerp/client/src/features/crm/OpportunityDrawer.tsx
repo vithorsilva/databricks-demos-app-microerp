@@ -34,6 +34,7 @@ export function OpportunityDrawer({
   open,
   onOpenChange,
   onUpdate,
+  onWin,
   onDelete,
 }: {
   opportunity: Opportunity | null;
@@ -41,6 +42,7 @@ export function OpportunityDrawer({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: (id: number, body: UpdateOpportunityBody) => Promise<Opportunity | null>;
+  onWin: (opp: Opportunity) => void;
   onDelete: (id: number) => void;
 }) {
   return (
@@ -52,6 +54,7 @@ export function OpportunityDrawer({
             opportunity={opportunity}
             pipeline={pipeline}
             onUpdate={onUpdate}
+            onWin={onWin}
             onDelete={onDelete}
             onClose={() => onOpenChange(false)}
           />
@@ -65,12 +68,14 @@ function DealEditor({
   opportunity,
   pipeline,
   onUpdate,
+  onWin,
   onDelete,
   onClose,
 }: {
   opportunity: Opportunity;
   pipeline: Pipeline | undefined;
   onUpdate: (id: number, body: UpdateOpportunityBody) => Promise<Opportunity | null>;
+  onWin: (opp: Opportunity) => void;
   onDelete: (id: number) => void;
   onClose: () => void;
 }) {
@@ -96,9 +101,9 @@ function DealEditor({
     setSaving(false);
   };
 
-  const markWon = async () => {
-    await onUpdate(opportunity.id, { status: 'won' });
+  const markWon = () => {
     onClose();
+    onWin(opportunity);
   };
 
   const confirmLost = async () => {

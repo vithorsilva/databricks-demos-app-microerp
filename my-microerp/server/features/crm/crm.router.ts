@@ -2,6 +2,7 @@ import type { Application } from 'express';
 import { CrmRepository } from './crm.repository.js';
 import { CrmService } from './crm.service.js';
 import { CrmController } from './crm.controller.js';
+import type { ReceivableService } from '../receivables/receivables.service.js';
 import type { DbClient } from '../../lib/db.js';
 
 interface AppKitWithLakebase {
@@ -11,11 +12,14 @@ interface AppKitWithLakebase {
   };
 }
 
-export async function registerCrmRoutes(appkit: AppKitWithLakebase): Promise<void> {
+export async function registerCrmRoutes(
+  appkit: AppKitWithLakebase,
+  receivableService?: ReceivableService,
+): Promise<void> {
   const repo = new CrmRepository(appkit.lakebase);
   await repo.ensureSchema();
 
-  const service = new CrmService(repo);
+  const service = new CrmService(repo, receivableService);
   const controller = new CrmController(service);
 
   appkit.server.extend((app) => {
@@ -48,6 +52,7 @@ export async function registerCrmRoutes(appkit: AppKitWithLakebase): Promise<voi
     app.get('/api/opportunities', controller.listOpportunities);
     app.post('/api/opportunities', controller.createOpportunity);
     app.patch('/api/opportunities/reorder', controller.reorderOpportunities);
+    app.post('/api/opportunities/:id/win', controller.winOpportunity);
     app.patch('/api/opportunities/:id', controller.updateOpportunity);
     app.delete('/api/opportunities/:id', controller.deleteOpportunity);
 

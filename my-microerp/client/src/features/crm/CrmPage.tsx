@@ -19,14 +19,21 @@ import {
   SelectContent,
   SelectItem,
   Badge,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
 } from '@databricks/appkit-ui/react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Pencil } from 'lucide-react';
 import { PageHeader } from '@/components/brand/index.js';
 import { useCompanies, useContacts, usePipelines } from './hooks.js';
 import { PipelineBoard } from './PipelineBoard.js';
 import { PipelineManager } from './PipelineManager.js';
 import { CrmReports } from './CrmReports.js';
-import type { CompanyType } from '@shared/crm/types.js';
+import { CompanyDrawer } from './CompanyDrawer.js';
+import type { Company, CompanyType, Contact } from '@shared/crm/types.js';
 
 const TYPE_LABEL: Record<CompanyType, string> = {
   customer: 'Cliente',
@@ -155,6 +162,7 @@ function CompaniesSection() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [selected, setSelected] = useState<Company | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -220,7 +228,7 @@ function CompaniesSection() {
           </TableHeader>
           <TableBody>
             {companies.map((c) => (
-              <TableRow key={c.id}>
+              <TableRow key={c.id} className="cursor-pointer" onClick={() => setSelected(c)}>
                 <TableCell className="font-medium">{c.name}</TableCell>
                 <TableCell>
                   <Badge variant="secondary">{TYPE_LABEL[c.type]}</Badge>
@@ -231,7 +239,8 @@ function CompaniesSection() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       void deleteCompany(c.id);
                     }}
                     className="text-muted-foreground hover:text-destructive"
@@ -245,6 +254,14 @@ function CompaniesSection() {
           </TableBody>
         </Table>
       )}
+
+      <CompanyDrawer
+        company={selected}
+        open={selected !== null}
+        onOpenChange={(o) => {
+          if (!o) setSelected(null);
+        }}
+      />
     </div>
   );
 }
@@ -253,16 +270,30 @@ function CompaniesSection() {
 function ContactsSection() {
   const { companies, loading: loadingCompanies } = useCompanies();
   const [companyId, setCompanyId] = useState<number | undefined>();
-  const { contacts, loading, error, createContact, deleteContact } = useContacts(companyId);
+  const { contacts, loading, error, createContact, updateContact, deleteContact } = useContacts(companyId);
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [editing, setEditing] = useState<Contact | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || companyId === undefined) return;
-    void createContact({ company_id: companyId, name: name.trim(), role: role.trim() || undefined });
-    setName('');
-    setRole('');
+    void createContact({
+      company_id: companyId,
+      name: name.trim(),
+      role: role.trim() || undefined,
+      email: email.trim() || undefined,
+      phone: phone.trim() || undefined,
+    }).then((created) => {
+      if (created) {
+        setName('');
+        setRole('');
+        setEmail('');
+        setPhone('');
+      }
+    });
   };
 
   return (
@@ -297,7 +328,15 @@ function ContactsSection() {
               onChange={(e) => setName(e.target.value)}
               className="flex-1 min-w-48"
             />
-            <Input placeholder="Cargo" value={role} onChange={(e) => setRole(e.target.value)} className="w-48" />
+            <Input placeholder="Cargo" value={role} onChange={(e) => setRole(e.target.value)} className="w-40" />
+            <Input
+              type="email"
+              placeholder="E-mail"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-48"
+            />
+            <Input placeholder="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-40" />
             <Button type="submit" disabled={!name.trim()}>
               Adicionar
             </Button>
@@ -317,7 +356,8 @@ function ContactsSection() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Cargo</TableHead>
                   <TableHead>E-mail</TableHead>
-                  <TableHead className="w-12" />
+                  <TableHead>Telefone</TableHead>
+                  <TableHead className="w-20" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -326,27 +366,121 @@ function ContactsSection() {
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell>{c.role ?? '—'}</TableCell>
                     <TableCell>{c.email ?? '—'}</TableCell>
+                    <TableCell>{c.phone ?? '—'}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          void deleteContact(c.id);
-                        }}
-                        className="text-muted-foreground hover:text-destructive"
-                        aria-label="Excluir contato"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditing(c)}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label="Editar contato"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            void deleteContact(c.id);
+                          }}
+                          className="text-muted-foreground hover:text-destructive"
+                          aria-label="Excluir contato"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           )}
+
+          <ContactEditDialog
+            contact={editing}
+            onOpenChange={(o) => {
+              if (!o) setEditing(null);
+            }}
+            onSave={(id, body) => updateContact(id, body)}
+          />
         </>
       )}
     </div>
+  );
+}
+
+function ContactEditDialog({
+  contact,
+  onOpenChange,
+  onSave,
+}: {
+  contact: Contact | null;
+  onOpenChange: (open: boolean) => void;
+  onSave: (id: number, body: { name: string; role?: string; email?: string; phone?: string }) => Promise<Contact | null>;
+}) {
+  return (
+    <Dialog open={contact !== null} onOpenChange={onOpenChange}>
+      <DialogContent>
+        {contact && <ContactEditForm key={contact.id} contact={contact} onSave={onSave} onClose={() => onOpenChange(false)} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ContactEditForm({
+  contact,
+  onSave,
+  onClose,
+}: {
+  contact: Contact;
+  onSave: (id: number, body: { name: string; role?: string; email?: string; phone?: string }) => Promise<Contact | null>;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(contact.name);
+  const [role, setRole] = useState(contact.role ?? '');
+  const [email, setEmail] = useState(contact.email ?? '');
+  const [phone, setPhone] = useState(contact.phone ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    const updated = await onSave(contact.id, {
+      name: name.trim(),
+      role: role.trim() || undefined,
+      email: email.trim() || undefined,
+      phone: phone.trim() || undefined,
+    });
+    setSaving(false);
+    if (updated) onClose();
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Editar contato</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-3 py-2">
+        <Input placeholder="Nome do contato" value={name} onChange={(e) => setName(e.target.value)} />
+        <Input placeholder="Cargo" value={role} onChange={(e) => setRole(e.target.value)} />
+        <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Input placeholder="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+      </div>
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="outline">Cancelar</Button>
+        </DialogClose>
+        <Button
+          onClick={() => {
+            void handleSave();
+          }}
+          disabled={saving || !name.trim()}
+        >
+          {saving ? 'Salvando...' : 'Salvar'}
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
 

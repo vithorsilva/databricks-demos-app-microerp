@@ -16,6 +16,7 @@ import {
   UpdateActivityBodySchema,
   CompanyTypeEnum,
   OpportunityStatusEnum,
+  WinOpportunityBodySchema,
 } from '../../../shared/crm/schemas.js';
 import { sendError } from '../../lib/errors.js';
 import type { CrmService } from './crm.service.js';
@@ -294,6 +295,7 @@ export class CrmController {
   listOpportunities = async (req: Request, res: Response): Promise<void> => {
     try {
       const pipelineId = parseQueryInt(req, 'pipeline_id');
+      const companyId = parseQueryInt(req, 'company_id');
       const statusRaw = queryStr(req, 'status');
       let status: string | undefined;
       if (statusRaw !== undefined) {
@@ -304,7 +306,7 @@ export class CrmController {
         }
         status = parsed.data;
       }
-      const opps = await this.service.listOpportunities(pipelineId, status);
+      const opps = await this.service.listOpportunities(pipelineId, status, companyId);
       res.json(opps);
     } catch (err) {
       sendError(res, err);
@@ -363,6 +365,25 @@ export class CrmController {
         return;
       }
       const opp = await this.service.updateOpportunity(id, parsed.data);
+      res.json(opp);
+    } catch (err) {
+      sendError(res, err);
+    }
+  };
+
+  winOpportunity = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const id = parseId(req);
+      if (id === null) {
+        res.status(400).json({ error: 'Invalid id' });
+        return;
+      }
+      const parsed = WinOpportunityBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: firstZodMessage(parsed.error, 'Parcelas inválidas') });
+        return;
+      }
+      const opp = await this.service.winOpportunity(id, parsed.data);
       res.json(opp);
     } catch (err) {
       sendError(res, err);

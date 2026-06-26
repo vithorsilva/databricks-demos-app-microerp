@@ -13,6 +13,7 @@ import { Trophy, X, Clock, Plus } from 'lucide-react';
 import { formatBRL } from '@/lib/format.js';
 import { useBoard, useCompanies } from './hooks.js';
 import { OpportunityDrawer } from './OpportunityDrawer.js';
+import { WinDialog } from './WinDialog.js';
 import { stageColor, rotLevel, daysSince, ownerInitials } from './lib.js';
 import type { Opportunity, Pipeline } from '@shared/crm/types.js';
 
@@ -28,6 +29,7 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
     error,
     createOpportunity,
     updateOpportunity,
+    winOpportunity,
     persistReorder,
     deleteOpportunity,
     reload,
@@ -38,6 +40,7 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
   const [overZone, setOverZone] = useState<'won' | 'lost' | null>(null);
   const [selected, setSelected] = useState<Opportunity | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [winTarget, setWinTarget] = useState<Opportunity | null>(null);
 
   const stages = [...pipeline.stages].sort((a, b) => a.position - b.position);
   const byStage = (stageId: number) =>
@@ -85,10 +88,15 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
 
   const dropOnZone = (zone: 'won' | 'lost') => {
     if (draggingId === null) return;
-    const id = draggingId;
+    const dragged = opportunities.find((o) => o.id === draggingId);
     setDraggingId(null);
     setOverZone(null);
-    void updateOpportunity(id, { status: zone });
+    if (!dragged) return;
+    if (zone === 'won') {
+      setWinTarget(dragged); // abre o diálogo de parcelas
+    } else {
+      void updateOpportunity(dragged.id, { status: 'lost' });
+    }
   };
 
   const openCard = (o: Opportunity) => {
@@ -201,9 +209,19 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
           if (!o) reload();
         }}
         onUpdate={updateOpportunity}
+        onWin={(opp) => setWinTarget(opp)}
         onDelete={(id) => {
           void deleteOpportunity(id);
         }}
+      />
+
+      <WinDialog
+        opportunity={winTarget}
+        open={winTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setWinTarget(null);
+        }}
+        onConfirm={winOpportunity}
       />
     </div>
   );

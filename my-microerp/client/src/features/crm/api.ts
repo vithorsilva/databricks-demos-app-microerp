@@ -14,6 +14,7 @@ import type {
   OpportunityStatus,
   CreateOpportunityBody,
   UpdateOpportunityBody,
+  WinOpportunityBody,
   ReorderOpportunitiesBody,
   Pipeline,
   PipelineListResponse,
@@ -63,13 +64,15 @@ export const crmApi = {
   reorderStages: (body: ReorderStagesBody) => api.patch<void>('/api/stages/reorder', body),
 
   // Opportunities
-  listOpportunities: (opts?: { pipelineId?: number; status?: OpportunityStatus }) =>
+  listOpportunities: (opts?: { pipelineId?: number; status?: OpportunityStatus; companyId?: number }) =>
     api.get<OpportunityListResponse>(
-      `/api/opportunities${qs({ pipeline_id: opts?.pipelineId, status: opts?.status })}`
+      `/api/opportunities${qs({ pipeline_id: opts?.pipelineId, status: opts?.status, company_id: opts?.companyId })}`
     ),
   createOpportunity: (body: CreateOpportunityBody) => api.post<Opportunity>('/api/opportunities', body),
   updateOpportunity: (id: number, body: UpdateOpportunityBody) =>
     api.patch<Opportunity>(`/api/opportunities/${id}`, body),
+  winOpportunity: (id: number, body: WinOpportunityBody) =>
+    api.post<Opportunity>(`/api/opportunities/${id}/win`, body),
   deleteOpportunity: (id: number) => api.delete<void>(`/api/opportunities/${id}`),
   reorderOpportunities: (body: ReorderOpportunitiesBody) => api.patch<void>('/api/opportunities/reorder', body),
 

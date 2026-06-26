@@ -11,7 +11,7 @@ interface AppKitWithLakebase {
   };
 }
 
-export async function registerReceivablesRoutes(appkit: AppKitWithLakebase): Promise<void> {
+export async function registerReceivablesRoutes(appkit: AppKitWithLakebase): Promise<ReceivableService> {
   const repo = new ReceivableRepository(appkit.lakebase);
   await repo.ensureSchema();
 
@@ -26,4 +26,6 @@ export async function registerReceivablesRoutes(appkit: AppKitWithLakebase): Pro
     app.patch('/api/receivables/:id', controller.update);
     app.delete('/api/receivables/:id', controller.remove);
   });
+
+  return service;
 }
