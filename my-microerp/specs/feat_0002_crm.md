@@ -1,5 +1,11 @@
 # Feature Spec: CRM
 
+> **Nota de versão:** a seção **v2 — Funil configurável, Atividades e Relatórios** (no fim
+> deste documento) estende e, onde indicado, **supera** o modelo descrito abaixo (v1). O board
+> deixou de ser read-only/enum fixo: agora há funis e estágios configuráveis (`crm.pipelines`,
+> `crm.stages`), arrastar-e-soltar, ganho/perda como `status`, atividades (`crm.activities`) e
+> relatórios. O texto v1 é mantido como histórico do CRUD base.
+
 ## Summary
 
 O CRM é a **fonte única de contrapartes** do Micro ERP: empresas/pessoas que são clientes
@@ -260,3 +266,89 @@ server/db/migrations/YYYYMMDDHHMMSS_<descricao>.sql
 - [ ] `DELETE` de empresa sem vínculos retorna `204` e remove contatos/oportunidades em cascata
 - [ ] A `CrmPage` exibe 3 abas e os estados loading/error/empty/filled em cada uma
 - [ ] O board do Pipeline exibe 5 colunas por `stage` e o botão "Avançar" emite PATCH
+
+---
+
+# v2 — Funil configurável, Atividades e Relatórios
+
+Evolução do CRM para capacidades próximas do Pipedrive: **gestão de funil** (múltiplos funis,
+estágios configuráveis, arrastar-e-soltar, ganho/perda, deal apodrecendo) e **relatórios de
+oportunidades** (funil de conversão, forecast, ganhos×perdas, desempenho por responsável).
+Sem novas dependências: drag-and-drop HTML5 nativo e gráficos via `BarChart`/`DonutChart`/
+`LineChart` de `@databricks/appkit-ui`.
+
+## Data Model v2
+
+### Novas tabelas
+
+**`crm.pipelines`** — `id SERIAL PK`, `name TEXT NOT NULL`, `position INTEGER NOT NULL DEFAULT 0`,
+`created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`.
+
+**`crm.stages`** — `id SERIAL PK`, `pipeline_id INTEGER NOT NULL REFERENCES crm.pipelines(id) ON DELETE CASCADE`,
+`name TEXT NOT NULL`, `position INTEGER NOT NULL DEFAULT 0`,
+`probability INTEGER NOT NULL DEFAULT 100 CHECK (probability BETWEEN 0 AND 100)`,
+`created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`.
+
+**`crm.activities`** — `id SERIAL PK`, `opportunity_id INTEGER NOT NULL REFERENCES crm.opportunities(id) ON DELETE CASCADE`,
+`type TEXT NOT NULL CHECK (type IN ('call','email','meeting','task','note'))`,
+`subject TEXT NOT NULL`, `notes TEXT`, `due_date TIMESTAMPTZ`, `done BOOLEAN NOT NULL DEFAULT false`,
+`created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`.
+
+### Evolução de `crm.opportunities` (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`)
+
+`pipeline_id INTEGER REFERENCES crm.pipelines(id)`, `stage_id INTEGER REFERENCES crm.stages(id)`,
+`status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','won','lost'))`, `lost_reason TEXT`,
+`sort_index INTEGER NOT NULL DEFAULT 0`, `stage_changed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`,
+`won_at TIMESTAMPTZ`, `lost_at TIMESTAMPTZ`. Coluna legada `stage` é mantida (não removida); as
+leituras passam a usar `stage_id`/`status`.
+
+### Seed + migração (idempotente, em `ensureSchema`)
+
+- Sem pipeline existente → cria **"Funil de Vendas"** com estágios `Lead`(20), `Qualificado`(40),
+  `Proposta`(60), `Negociação`(80).
+- Backfill de oportunidades com `stage_id IS NULL`: enum legado → `stage_id` do funil padrão;
+  `stage='won'→status='won'`, `stage='lost'→status='lost'`, demais → `status='open'`. `pipeline_id`
+  recebe o funil padrão.
+
+## API Contract v2
+
+- **Pipelines** — `GET /api/pipelines` (estágios aninhados, ordenados por `position`), `POST /api/pipelines`,
+  `PATCH /api/pipelines/:id`, `DELETE /api/pipelines/:id` (409 se for o último funil).
+- **Stages** — `POST /api/stages`, `PATCH /api/stages/:id`, `DELETE /api/stages/:id` (409 se houver
+  oportunidades abertas no estágio), `PATCH /api/stages/reorder` `{ items:[{id,position}] }`.
+- **Opportunities** — `GET /api/opportunities?pipeline_id=&status=` (board usa `status=open`);
+  `POST`/`PATCH`/`DELETE` como v1 + `PATCH` aceita `stage_id`, `status`, `lost_reason`, `sort_index`
+  (mover coluna atualiza `stage_changed_at`; `status` ganho/perda seta `won_at`/`lost_at`);
+  `PATCH /api/opportunities/reorder` `{ items:[{id,stage_id,sort_index}] }`.
+- **Activities** — `GET /api/activities?opportunity_id=`, `POST`, `PATCH /api/activities/:id`
+  (toggle `done`/editar), `DELETE /api/activities/:id`.
+- **Insights** — `GET /api/opportunities/insights?pipeline_id=&from=&to=` → `{ funnel, forecast,
+  won_lost, owner_performance }` (agregações SQL no repository; `weighted = amount*probability/100`).
+
+## Frontend Behavior v2
+
+`CrmPage` reorganizada em abas **Funil**, **Relatórios**, **Empresas**, **Contatos**.
+
+- **Funil** (`PipelineBoard`): seletor de funil; colunas por estágio com cabeçalho `nº deals · valor
+  total`; cards com barra de cor, título, empresa, valor (BRL), owner e selo de "apodrecendo"
+  (`now - stage_changed_at` > limite); **drag-and-drop HTML5** entre colunas + drop zones **GANHO**/
+  **PERDIDO**; atualização otimista + `PATCH /reorder`.
+- **Detalhe** (`OpportunityDrawer`, `Sheet`): edição inline, mudar funil/estágio, marcar ganho/perdido
+  (com motivo), timeline de atividades (criar/concluir/excluir, ícone por tipo).
+- **Relatórios** (`CrmReports`): `KpiCard`s (em aberto, valor ponderado, win rate, ticket médio) +
+  4 gráficos (funil de conversão, forecast por mês, ganhos×perdas + motivos, desempenho por owner),
+  com filtro de funil e período.
+- **Gestor de funis** (`PipelineManager`): criar/renomear funil, criar/renomear/reordenar/excluir
+  estágios e ajustar probabilidade.
+
+## Acceptance Criteria v2
+
+- [ ] `ensureSchema` cria pipelines/stages/activities, semeia o funil padrão **uma vez** e faz backfill
+      (idempotente em execuções repetidas).
+- [ ] `GET /api/opportunities?pipeline_id=&status=open` retorna oportunidades abertas com `stage_name`/`probability`.
+- [ ] Arrastar um card e soltar em outra coluna persiste via `PATCH /api/opportunities/reorder`.
+- [ ] Soltar em GANHO/PERDIDO muda `status` e seta `won_at`/`lost_at`; perda exige/registra `lost_reason`.
+- [ ] `DELETE /api/stages/:id` com oportunidades abertas retorna `409`.
+- [ ] `GET /api/opportunities/insights` retorna as 4 seções com `weighted = amount*probability/100`.
+- [ ] Drawer cria/conclui/exclui atividades em `crm.activities`.
+- [ ] Regressão: CRUD de empresas/contatos e `DELETE` de empresa com AR/AP vinculado (409) seguem funcionando.
