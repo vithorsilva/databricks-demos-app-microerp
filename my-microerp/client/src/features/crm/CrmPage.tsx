@@ -20,30 +20,18 @@ import {
   SelectItem,
   Badge,
 } from '@databricks/appkit-ui/react';
-import { Trash2, ArrowRight } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/brand/index.js';
-import { formatBRL } from '@/lib/format.js';
-import { useCompanies, useContacts, useOpportunities } from './hooks.js';
-import type { CompanyType, OpportunityStage } from '@shared/crm/types.js';
+import { useCompanies, useContacts, usePipelines } from './hooks.js';
+import { PipelineBoard } from './PipelineBoard.js';
+import { PipelineManager } from './PipelineManager.js';
+import { CrmReports } from './CrmReports.js';
+import type { CompanyType } from '@shared/crm/types.js';
 
 const TYPE_LABEL: Record<CompanyType, string> = {
   customer: 'Cliente',
   supplier: 'Fornecedor',
   both: 'Ambos',
-};
-
-const STAGES: { key: OpportunityStage; label: string }[] = [
-  { key: 'lead', label: 'Lead' },
-  { key: 'qualified', label: 'Qualificado' },
-  { key: 'proposal', label: 'Proposta' },
-  { key: 'won', label: 'Ganho' },
-  { key: 'lost', label: 'Perdido' },
-];
-
-const NEXT_STAGE: Partial<Record<OpportunityStage, OpportunityStage>> = {
-  lead: 'qualified',
-  qualified: 'proposal',
-  proposal: 'won',
 };
 
 function ErrorBanner({ message }: { message: string }) {
@@ -52,18 +40,109 @@ function ErrorBanner({ message }: { message: string }) {
 
 export function CrmPage() {
   return (
-    <div className="w-full max-w-5xl mx-auto">
-      <PageHeader title="CRM corporativo" subtitle="Empresas, contatos e pipeline de oportunidades." />
-      <Tabs defaultValue="companies">
+    <div className="mx-auto w-full max-w-7xl">
+      <PageHeader title="CRM corporativo" subtitle="Funil de vendas, relatórios, empresas e contatos." />
+      <Tabs defaultValue="pipeline">
         <TabsList>
+          <TabsTrigger value="pipeline">Funil</TabsTrigger>
+          <TabsTrigger value="reports">Relatórios</TabsTrigger>
           <TabsTrigger value="companies">Empresas</TabsTrigger>
           <TabsTrigger value="contacts">Contatos</TabsTrigger>
-          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
         </TabsList>
-        <TabsContent value="companies"><CompaniesSection /></TabsContent>
-        <TabsContent value="contacts"><ContactsSection /></TabsContent>
-        <TabsContent value="pipeline"><PipelineSection /></TabsContent>
+        <TabsContent value="pipeline">
+          <FunnelTab />
+        </TabsContent>
+        <TabsContent value="reports">
+          <ReportsTab />
+        </TabsContent>
+        <TabsContent value="companies">
+          <CompaniesSection />
+        </TabsContent>
+        <TabsContent value="contacts">
+          <ContactsSection />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ── Funil ──────────────────────────────────────────────────
+function FunnelTab() {
+  const pm = usePipelines();
+  const { pipelines, current, currentId, setCurrentId, loading, error } = pm;
+
+  return (
+    <div className="space-y-4 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Select
+          value={currentId?.toString() ?? ''}
+          onValueChange={(v) => setCurrentId(Number(v))}
+          disabled={loading || pipelines.length === 0}
+        >
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Selecione um funil" />
+          </SelectTrigger>
+          <SelectContent>
+            {pipelines.map((p) => (
+              <SelectItem key={p.id} value={p.id.toString()}>
+                {p.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <PipelineManager
+          current={current}
+          createPipeline={(name) => {
+            void pm.createPipeline(name);
+          }}
+          renamePipeline={(id, name) => {
+            void pm.renamePipeline(id, name);
+          }}
+          deletePipeline={(id) => {
+            void pm.deletePipeline(id);
+          }}
+          createStage={(b) => {
+            void pm.createStage(b);
+          }}
+          updateStage={(id, b) => {
+            void pm.updateStage(id, b);
+          }}
+          deleteStage={(id) => {
+            void pm.deleteStage(id);
+          }}
+        />
+      </div>
+
+      {error && <ErrorBanner message={error} />}
+      {loading && <Skeleton className="h-64 w-full" />}
+      {!loading && current && <PipelineBoard key={current.id} pipeline={current} />}
+      {!loading && !current && <p className="text-muted-foreground py-8 text-center">Nenhum funil configurado.</p>}
+    </div>
+  );
+}
+
+// ── Relatórios ─────────────────────────────────────────────
+function ReportsTab() {
+  const { pipelines, currentId, setCurrentId, loading } = usePipelines();
+  return (
+    <div className="space-y-4 pt-4">
+      <Select
+        value={currentId?.toString() ?? ''}
+        onValueChange={(v) => setCurrentId(Number(v))}
+        disabled={loading || pipelines.length === 0}
+      >
+        <SelectTrigger className="w-64">
+          <SelectValue placeholder="Selecione um funil" />
+        </SelectTrigger>
+        <SelectContent>
+          {pipelines.map((p) => (
+            <SelectItem key={p.id} value={p.id.toString()}>
+              {p.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <CrmReports pipelineId={currentId} />
     </div>
   );
 }
@@ -97,9 +176,16 @@ function CompaniesSection() {
   return (
     <div className="space-y-4 pt-4">
       <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
-        <Input placeholder="Nome da empresa" value={name} onChange={(e) => setName(e.target.value)} className="flex-1 min-w-48" />
+        <Input
+          placeholder="Nome da empresa"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="flex-1 min-w-48"
+        />
         <Select value={type} onValueChange={(v) => setType(v as CompanyType)}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="customer">Cliente</SelectItem>
             <SelectItem value="supplier">Fornecedor</SelectItem>
@@ -136,12 +222,21 @@ function CompaniesSection() {
             {companies.map((c) => (
               <TableRow key={c.id}>
                 <TableCell className="font-medium">{c.name}</TableCell>
-                <TableCell><Badge variant="secondary">{TYPE_LABEL[c.type]}</Badge></TableCell>
+                <TableCell>
+                  <Badge variant="secondary">{TYPE_LABEL[c.type]}</Badge>
+                </TableCell>
                 <TableCell>{c.email ?? '—'}</TableCell>
                 <TableCell>{c.phone ?? '—'}</TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="sm" onClick={() => { void deleteCompany(c.id); }}
-                    className="text-muted-foreground hover:text-destructive" aria-label="Excluir empresa">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void deleteCompany(c.id);
+                    }}
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Excluir empresa"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </TableCell>
@@ -172,11 +267,19 @@ function ContactsSection() {
 
   return (
     <div className="space-y-4 pt-4">
-      <Select value={companyId?.toString() ?? ''} onValueChange={(v) => setCompanyId(Number(v))} disabled={loadingCompanies}>
-        <SelectTrigger className="w-72"><SelectValue placeholder="Selecione uma empresa" /></SelectTrigger>
+      <Select
+        value={companyId?.toString() ?? ''}
+        onValueChange={(v) => setCompanyId(Number(v))}
+        disabled={loadingCompanies}
+      >
+        <SelectTrigger className="w-72">
+          <SelectValue placeholder="Selecione uma empresa" />
+        </SelectTrigger>
         <SelectContent>
           {companies.map((c) => (
-            <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+            <SelectItem key={c.id} value={c.id.toString()}>
+              {c.name}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>
@@ -188,9 +291,16 @@ function ContactsSection() {
       {companyId !== undefined && (
         <>
           <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
-            <Input placeholder="Nome do contato" value={name} onChange={(e) => setName(e.target.value)} className="flex-1 min-w-48" />
+            <Input
+              placeholder="Nome do contato"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="flex-1 min-w-48"
+            />
             <Input placeholder="Cargo" value={role} onChange={(e) => setRole(e.target.value)} className="w-48" />
-            <Button type="submit" disabled={!name.trim()}>Adicionar</Button>
+            <Button type="submit" disabled={!name.trim()}>
+              Adicionar
+            </Button>
           </form>
 
           {error && <ErrorBanner message={error} />}
@@ -217,8 +327,15 @@ function ContactsSection() {
                     <TableCell>{c.role ?? '—'}</TableCell>
                     <TableCell>{c.email ?? '—'}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" onClick={() => { void deleteContact(c.id); }}
-                        className="text-muted-foreground hover:text-destructive" aria-label="Excluir contato">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          void deleteContact(c.id);
+                        }}
+                        className="text-muted-foreground hover:text-destructive"
+                        aria-label="Excluir contato"
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -228,84 +345,6 @@ function ContactsSection() {
             </Table>
           )}
         </>
-      )}
-    </div>
-  );
-}
-
-// ── Pipeline ───────────────────────────────────────────────
-function PipelineSection() {
-  const { companies } = useCompanies();
-  const { opportunities, loading, error, createOpportunity, updateOpportunity } = useOpportunities();
-  const [title, setTitle] = useState('');
-  const [companyId, setCompanyId] = useState<number | undefined>();
-  const [amount, setAmount] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || companyId === undefined) return;
-    const amt = parseFloat(amount.replace(',', '.'));
-    void createOpportunity({
-      company_id: companyId,
-      title: title.trim(),
-      amount: Number.isFinite(amt) && amt > 0 ? amt : undefined,
-    });
-    setTitle('');
-    setAmount('');
-  };
-
-  return (
-    <div className="space-y-4 pt-4">
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
-        <Input placeholder="Título da oportunidade" value={title} onChange={(e) => setTitle(e.target.value)} className="flex-1 min-w-48" />
-        <Select value={companyId?.toString() ?? ''} onValueChange={(v) => setCompanyId(Number(v))}>
-          <SelectTrigger className="w-56"><SelectValue placeholder="Empresa" /></SelectTrigger>
-          <SelectContent>
-            {companies.map((c) => (
-              <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input placeholder="Valor (R$)" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-36" inputMode="decimal" />
-        <Button type="submit" disabled={!title.trim() || companyId === undefined}>Adicionar</Button>
-      </form>
-
-      {error && <ErrorBanner message={error} />}
-
-      {loading ? (
-        <SkeletonRows />
-      ) : (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-          {STAGES.map((stage) => {
-            const items = opportunities.filter((o) => o.stage === stage.key);
-            return (
-              <div key={stage.key} className="rounded-md border bg-muted/40 p-2">
-                <h3 className="mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {stage.label} · {items.length}
-                </h3>
-                <div className="space-y-2">
-                  {items.map((o) => {
-                    const next = NEXT_STAGE[o.stage];
-                    return (
-                      <div key={o.id} className="rounded-md border bg-card p-2 text-sm">
-                        <p className="font-medium leading-tight">{o.title}</p>
-                        <p className="text-xs text-muted-foreground">{o.company_name}</p>
-                        {o.amount != null && <p className="text-xs tabular-nums">{formatBRL(o.amount)}</p>}
-                        {next && (
-                          <Button variant="ghost" size="sm" className="mt-1 h-6 px-1 text-xs text-primary"
-                            onClick={() => { void updateOpportunity(o.id, { stage: next }); }}>
-                            Avançar <ArrowRight className="ml-1 h-3 w-3" />
-                          </Button>
-                        )}
-                      </div>
-                    );
-                  })}
-                  {items.length === 0 && <p className="px-1 py-2 text-xs text-muted-foreground">—</p>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       )}
     </div>
   );

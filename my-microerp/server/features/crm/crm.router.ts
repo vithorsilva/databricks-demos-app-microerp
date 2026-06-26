@@ -31,10 +31,30 @@ export async function registerCrmRoutes(appkit: AppKitWithLakebase): Promise<voi
     app.patch('/api/contacts/:id', controller.updateContact);
     app.delete('/api/contacts/:id', controller.deleteContact);
 
-    // Opportunities
+    // Pipelines
+    app.get('/api/pipelines', controller.listPipelines);
+    app.post('/api/pipelines', controller.createPipeline);
+    app.patch('/api/pipelines/:id', controller.updatePipeline);
+    app.delete('/api/pipelines/:id', controller.deletePipeline);
+
+    // Stages (rota fixa /reorder antes de /:id)
+    app.post('/api/stages', controller.createStage);
+    app.patch('/api/stages/reorder', controller.reorderStages);
+    app.patch('/api/stages/:id', controller.updateStage);
+    app.delete('/api/stages/:id', controller.deleteStage);
+
+    // Opportunities (rotas fixas antes de /:id)
+    app.get('/api/opportunities/insights', controller.getInsights);
     app.get('/api/opportunities', controller.listOpportunities);
     app.post('/api/opportunities', controller.createOpportunity);
+    app.patch('/api/opportunities/reorder', controller.reorderOpportunities);
     app.patch('/api/opportunities/:id', controller.updateOpportunity);
     app.delete('/api/opportunities/:id', controller.deleteOpportunity);
+
+    // Activities
+    app.get('/api/activities', controller.listActivities);
+    app.post('/api/activities', controller.createActivity);
+    app.patch('/api/activities/:id', controller.updateActivity);
+    app.delete('/api/activities/:id', controller.deleteActivity);
   });
 }
