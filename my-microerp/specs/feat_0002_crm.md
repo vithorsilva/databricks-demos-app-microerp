@@ -5,6 +5,11 @@
 > deixou de ser read-only/enum fixo: agora há funis e estágios configuráveis (`crm.pipelines`,
 > `crm.stages`), arrastar-e-soltar, ganho/perda como `status`, atividades (`crm.activities`) e
 > relatórios. O texto v1 é mantido como histórico do CRUD base.
+>
+> A seção **v3 — Histórico por empresa, contatos completos e Ganho→Contas a Receber** (no fim
+> deste documento) adiciona: visão de todas as oportunidades de uma empresa (incl. ganhas/perdidas)
+> com **reabrir**, formulário de contato com **e-mail/telefone** e **edição**, e geração de
+> **contas a receber parcelado** ao marcar uma oportunidade como ganha.
 
 ## Summary
 
@@ -352,3 +357,80 @@ leituras passam a usar `stage_id`/`status`.
 - [ ] `GET /api/opportunities/insights` retorna as 4 seções com `weighted = amount*probability/100`.
 - [ ] Drawer cria/conclui/exclui atividades em `crm.activities`.
 - [ ] Regressão: CRUD de empresas/contatos e `DELETE` de empresa com AR/AP vinculado (409) seguem funcionando.
+
+---
+
+# v3 — Histórico por empresa, contatos completos e Ganho→Contas a Receber
+
+Três melhorias incrementais pedidas pelo usuário, sem novas dependências. Reusa o módulo de
+Contas a Receber ([feat_0003_accounts_receivable.md](feat_0003_accounts_receivable.md)), que ganha
+o vínculo opcional `opportunity_id` (ver lá a seção *v2 — Integração com CRM*).
+
+## 1. Histórico de oportunidades por empresa + reabrir
+
+Hoje o board mostra só `status='open'`; ao ganhar/perder, a oportunidade some e não há onde
+revê-la. Agora clicar numa empresa (aba **Empresas**) abre um drawer com **todas** as
+oportunidades daquela empresa, agrupadas por status (Aberta/Ganha/Perdida), e permite **reabrir**
+uma fechada (volta para `status='open'`).
+
+- **API** — `GET /api/opportunities` aceita novo filtro opcional `?company_id=` (combina com
+  `pipeline_id`/`status`). Sem `status`, retorna todos os status da empresa.
+- **Repository** — `findOpportunities(pipelineId?, status?, companyId?)` adiciona `o.company_id = $n`
+  ao WHERE. `getOpportunityById` passa a ser público (usado pela orquestração de ganho/reabertura).
+- **Reabrir** — `PATCH /api/opportunities/:id` com `{ status: 'open' }` (já suportado); ao reabrir
+  uma oportunidade que estava `won`, o serviço remove os contas a receber **pendentes** gerados por
+  ela (ver item 3).
+- **Frontend** — `CompanyDrawer` (`Sheet`) + hook `useCompanyOpportunities(companyId)` com `reopen`;
+  linha da empresa em `CompaniesSection` fica clicável (botão excluir usa `stopPropagation`).
+
+## 2. Contatos com e-mail/telefone e edição
+
+O schema de `crm.contacts` já tinha `email`/`phone`, mas o formulário só enviava `name`/`role` e
+não havia edição. Agora o cadastro inclui **E-mail** e **Telefone** e há **edição** de contatos
+existentes (Dialog com nome/cargo/e-mail/telefone). Sem mudança de banco/contrato — usa
+`POST /api/contacts` e `PATCH /api/contacts/:id` já existentes. `useContacts` ganha `updateContact`.
+E-mail vazio é enviado como `undefined` (o schema valida `z.string().email()`).
+
+## 3. Marcar como Ganha gera Contas a Receber (parcelado)
+
+Ao marcar uma oportunidade como ganha, o usuário define **parcelas** (valor + vencimento de cada);
+cada parcela vira um título em `ar.receivables` vinculado à oportunidade (`opportunity_id`).
+
+- **Schema** (`shared/crm/schemas.ts`):
+  ```ts
+  InstallmentSchema = z.object({
+    description: z.string().max(500).optional(),
+    amount:      z.number().positive('Valor deve ser maior que zero'),
+    due_date:    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data inválida'),
+  })
+  WinOpportunityBodySchema = z.object({
+    installments: z.array(InstallmentSchema).min(1, 'Informe ao menos uma parcela'),
+  })
+  ```
+- **API** — `POST /api/opportunities/:id/win` (body `WinOpportunityBodySchema`) → marca `status='won'`
+  e cria as parcelas; retorna a `OpportunitySchema` atualizada. **Bloqueia** total ≤ 0 (`400`) e
+  oportunidade já ganha (`409`, evita AR duplicado).
+- **Orquestração** (`CrmService`) — recebe `ReceivableService` opcional injetado. `winOpportunity`
+  busca a oportunidade, valida, marca como ganha e chama `receivables.createForOpportunity(id,
+  company_id, installments)` (descrição default `"<título> — Parcela i/N"` quando vazia).
+  `updateOpportunity` detecta `won → open` e chama `receivables.deletePendingByOpportunity(id)`.
+- **Wiring** (`server.ts`) — garante o schema do CRM **antes** do AR (FK `opportunity_id →
+  crm.opportunities`), registra AR (que retorna o `ReceivableService`) e injeta no CRM.
+- **Frontend** — `WinDialog` (`Dialog`) com editor de parcelas (atalho "parcelar em N vezes" divide o
+  total em N parcelas mensais; adicionar/remover/editar), **confirmar desabilitado** se total ≤ 0 ou
+  parcela inválida. Acionado pelo botão **Ganho** do `OpportunityDrawer` e pela drop zone **GANHO** do
+  board (`PipelineBoard`), que deixam de marcar ganho direto e passam a abrir o diálogo.
+
+## Acceptance Criteria v3
+
+- [ ] `GET /api/opportunities?company_id=:id` retorna oportunidades da empresa em todos os status.
+- [ ] Clicar numa empresa abre o drawer com oportunidades agrupadas por status (Aberta/Ganha/Perdida).
+- [ ] **Reabrir** uma ganha/perdida volta `status='open'` (some do drawer como fechada; volta ao board).
+- [ ] Cadastro de contato envia e-mail/telefone; editar um contato existente atualiza esses campos.
+- [ ] E-mail inválido em contato retorna `400`.
+- [ ] `POST /api/opportunities/:id/win` sem parcelas (ou total ≤ 0) retorna `400`; oportunidade já
+      ganha retorna `409`.
+- [ ] `POST /api/opportunities/:id/win` com N parcelas cria N títulos em `ar.receivables` com
+      `opportunity_id`, valores e vencimentos definidos.
+- [ ] Reabrir uma oportunidade ganha remove os títulos **pendentes** dela (mantém os já baixados).
+- [ ] Soltar um card na drop zone **GANHO** abre o `WinDialog` (não marca ganho direto).

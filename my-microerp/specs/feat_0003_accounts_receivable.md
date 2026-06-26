@@ -1,5 +1,10 @@
 # Feature Spec: Contas a Receber (AR)
 
+> **Nota de versão:** a seção **v2 — Integração com CRM (Ganho→AR parcelado)** (no fim deste
+> documento) adiciona a coluna opcional `opportunity_id` e a geração automática de títulos
+> (parcelas) quando uma oportunidade do CRM é marcada como ganha. O texto abaixo (v1) descreve o
+> CRUD/baixa base, que segue válido.
+
 ## Summary
 
 Contas a Receber gerencia os **títulos a receber** de clientes: cada título tem cliente,
@@ -180,3 +185,43 @@ Alterações futuras de schema: SQL idempotente em
 - [ ] A `ReceivablesPage` exibe KPIs, filtro por status e a tabela com badges de status
 - [ ] O `<select>` de cliente lista empresas `customer`/`both` de `GET /api/companies?type=customer`
 - [ ] Valores são exibidos em BRL na UI e trafegam como `number` na API
+
+---
+
+# v2 — Integração com CRM (Ganho→AR parcelado)
+
+Quando uma oportunidade do CRM é marcada como ganha, suas **parcelas** são geradas automaticamente
+como títulos em `ar.receivables`, vinculados à oportunidade de origem. Ver o fluxo no CRM em
+[feat_0002_crm.md](feat_0002_crm.md) (*v3 — item 3*).
+
+## Data Model v2
+
+Coluna adicionada via `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` em `ensureSchema` (idempotente):
+
+| Coluna | Tipo PostgreSQL | Constraints | Descrição |
+|--------|----------------|-------------|-----------|
+| `opportunity_id` | `INTEGER` | `NULL REFERENCES crm.opportunities(id) ON DELETE SET NULL` | Oportunidade que originou o título |
+
+- `ReceivableSchema` ganha `opportunity_id: z.number().int().positive().nullable()`. Todos os
+  SELECT/RETURNING (incl. `create`, `update`, `settle`, `findAll`) passam a projetar `opportunity_id`.
+- Títulos criados manualmente (`POST /api/receivables`) mantêm `opportunity_id = NULL`.
+- **Ordem de boot**: como a FK referencia `crm.opportunities`, o schema do CRM deve ser garantido
+  **antes** do `ensureSchema` do AR (orquestrado em `server.ts`).
+
+## Repository/Service v2
+
+- `createForOpportunity(opportunityId, customerId, items[])` — insere N parcelas numa única
+  instrução (`INSERT ... SELECT FROM UNNEST(...)`), com `opportunity_id` preenchido; retorna os
+  títulos criados (join com `crm.companies`).
+- `deletePendingByOpportunity(opportunityId)` — remove os títulos `status='pending'` da oportunidade
+  (usado ao **reabrir** uma oportunidade ganha; títulos já baixados permanecem).
+- Esses métodos são chamados pelo `CrmService` (não há novas rotas REST de AR para isso — a geração
+  acontece via `POST /api/opportunities/:id/win`).
+
+## Acceptance Criteria v2
+
+- [ ] `ensureSchema` adiciona `opportunity_id` de forma idempotente; títulos manuais ficam com `NULL`.
+- [ ] Marcar oportunidade como ganha cria 1 título por parcela com `opportunity_id` e valores/vencimentos corretos.
+- [ ] Reabrir a oportunidade remove os títulos **pendentes** vinculados; títulos já pagos não são afetados.
+- [ ] Excluir a oportunidade (`ON DELETE SET NULL`) mantém os títulos, apenas zera o vínculo.
+- [ ] Regressão: CRUD/baixa/summary de AR e o `<select>` de cliente seguem funcionando.
