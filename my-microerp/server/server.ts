@@ -1,4 +1,4 @@
-import { createApp, lakebase, server } from '@databricks/appkit';
+import { createApp, lakebase, server, genie } from '@databricks/appkit';
 import { registerTodosRoutes } from './features/todos/todos.router.js';
 import { registerCrmRoutes } from './features/crm/crm.router.js';
 import { CrmRepository } from './features/crm/crm.repository.js';
@@ -9,6 +9,9 @@ createApp({
   plugins: [
     lakebase(),
     server(),
+    // Genie: lê DATABRICKS_GENIE_SPACE_ID do ambiente e expõe /api/genie/* (SSE).
+    // Registra o space sob o alias "default" (usado pelo <GenieChat alias="default" />).
+    genie(),
   ],
   async onPluginsReady(appkit) {
     await registerTodosRoutes(appkit);

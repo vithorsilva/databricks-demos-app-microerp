@@ -8,6 +8,10 @@ variables:
     description: Full Lakebase Postgres database resource name. Obtain by running `databricks postgres list-databases {branch-name}`, select the desired item from the output array and use its .name value. Requires the branch resource name.
   postgres_project:
     description: Full Lakebase Postgres project resource name. Obtain by running `databricks postgres list-projects`, select the desired item from the output array and use its .name value.
+  genie_space_id:
+    description: Genie Space ID. Encontrado na aba About do Genie Space ou via `databricks genie list-spaces`.
+  genie_space_name:
+    description: Nome do Genie Space.
 
 resources:
   apps:
@@ -15,9 +19,11 @@ resources:
       name: "my-microerp"
       description: "A Databricks App powered by AppKit"
       source_code_path: ./
-      # Uncomment to enable on behalf of user API scopes. Available scopes: sql, dashboards.genie, files.files, serving.serving-endpoints
-      # user_api_scopes:
-      #   - sql
+      # OBO: o plugin genie() (e o componente GenieChat) executam sempre como o usuário
+      # logado (asUser), então o token encaminhado precisa do escopo dashboards.genie.
+      # Available scopes: sql, dashboards.genie, files.files, serving.serving-endpoints
+      user_api_scopes:
+        - dashboards.genie
 
       # The resources which this app has access to.
       resources:
@@ -26,6 +32,11 @@ resources:
             branch: ${var.postgres_branch}
             database: ${var.postgres_database}
             permission: CAN_CONNECT_AND_CREATE
+        - name: genie-space
+          genie_space:
+            name: ${var.genie_space_name}
+            space_id: ${var.genie_space_id}
+            permission: CAN_RUN
 
 targets:
   default:
@@ -39,3 +50,5 @@ targets:
       postgres_project: projects/db-demo-microerp-dex
       postgres_branch: projects/db-demo-microerp-dex/branches/production
       postgres_database: projects/db-demo-microerp-dex/branches/production/databases/databricks-postgres
+      genie_space_id: 01f17197d1111a0e817f0344e22c87ad
+      genie_space_name: dex_interno_demo_microerpapp

@@ -10,6 +10,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  GenieChat,
   useIsMobile,
 } from '@databricks/appkit-ui/react';
 import { Menu } from 'lucide-react';
@@ -119,7 +120,26 @@ export default function App() {
 function HomePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <PageHeader title="Micro ERP DEX" subtitle="Gestão de clientes, contas a receber e contas a pagar." />
+      <PageHeader
+        title="Micro ERP DEX"
+        subtitle="Converse com o assistente de dados ou acesse os módulos do ERP."
+      />
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Assistente DEX</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* GenieChat exige altura explícita no container pai — sem ela o chat colapsa para 0. */}
+          <div className="h-[600px] rounded-md border overflow-hidden">
+            <GenieChat alias="default" placeholder="Pergunte sobre seus dados..." />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Respostas geradas por IA a partir dos seus dados via Genie — confira o SQL gerado antes de
+            confiar nos resultados. As consultas respeitam as suas permissões de acesso aos dados.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
