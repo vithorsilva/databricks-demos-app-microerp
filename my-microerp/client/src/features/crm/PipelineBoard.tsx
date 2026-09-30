@@ -9,17 +9,13 @@ import {
   SelectItem,
   Skeleton,
 } from '@databricks/appkit-ui/react';
-import { Trophy, X, Clock, Plus } from 'lucide-react';
+import { ErrorBanner, FieldLabel, Panel, StatusBadge } from '@/components/brand/index.js';
 import { formatBRL } from '@/lib/format.js';
 import { useBoard, useCompanies } from './hooks.js';
 import { OpportunityDrawer } from './OpportunityDrawer.js';
 import { WinDialog } from './WinDialog.js';
-import { stageColor, rotLevel, daysSince, ownerInitials } from './lib.js';
+import { rotLevel, daysSince, ownerInitials } from './lib.js';
 import type { Opportunity, Pipeline } from '@shared/crm/types.js';
-
-function ErrorBanner({ message }: { message: string }) {
-  return <div className="text-destructive bg-destructive/10 p-3 rounded-md">{message}</div>;
-}
 
 export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
   const { companies } = useCompanies();
@@ -105,7 +101,7 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
   };
 
   return (
-    <div className="space-y-4 pt-4">
+    <div className="space-y-5">
       <NewDealForm
         companies={companies}
         onCreate={(companyId, title, amount) => {
@@ -130,8 +126,8 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
               return (
                 <div
                   key={stage.id}
-                  className={`flex w-72 shrink-0 flex-col rounded-md border bg-muted/40 transition-colors ${
-                    isOver ? 'ring-2 ring-primary' : ''
+                  className={`flex w-72 shrink-0 flex-col border-t-[3px] border-t-dex-azul bg-dex-azul/[0.04] transition-colors ${
+                    isOver ? 'outline-2 outline-dex-azul' : ''
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -140,12 +136,12 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
                   onDragLeave={() => setOverStageId((v) => (v === stage.id ? null : v))}
                   onDrop={() => dropOnStage(stage.id)}
                 >
-                  <div className="rounded-t-md" style={{ borderTop: `3px solid ${stageColor(stage.position)}` }}>
-                    <div className="flex items-baseline justify-between px-3 py-2">
-                      <h3 className="text-xs font-semibold uppercase tracking-wide">{stage.name}</h3>
-                      <span className="text-[11px] text-muted-foreground">{stage.probability}%</span>
+                  <div>
+                    <div className="flex items-baseline justify-between px-3 pt-3 pb-1">
+                      <h3 className="font-display text-sm font-bold tracking-[0.04em] text-dex-azul uppercase">{stage.name}</h3>
+                      <span className="font-display text-xs font-semibold text-muted-foreground tabular-nums">{stage.probability}%</span>
                     </div>
-                    <p className="px-3 pb-2 text-[11px] text-muted-foreground tabular-nums">
+                    <p className="px-3 pb-2 text-xs text-muted-foreground tabular-nums">
                       {items.length} {items.length === 1 ? 'negócio' : 'negócios'} · {formatBRL(totalValue(stage.id))}
                     </p>
                   </div>
@@ -154,7 +150,6 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
                       <DealCard
                         key={o.id}
                         opp={o}
-                        color={stageColor(stage.position)}
                         dragging={draggingId === o.id}
                         onDragStart={() => setDraggingId(o.id)}
                         onDragEnd={() => setDraggingId(null)}
@@ -162,7 +157,7 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
                       />
                     ))}
                     {items.length === 0 && (
-                      <p className="px-1 py-3 text-center text-xs text-muted-foreground">Arraste cards aqui</p>
+                      <p className="border border-dashed border-[#a6a6a6] px-1 py-4 text-center text-xs text-muted-foreground">Arraste cards aqui</p>
                     )}
                   </div>
                 </div>
@@ -174,9 +169,8 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
           <div className="grid grid-cols-2 gap-3">
             <DropZone
               label="GANHO"
-              tone="success"
+              tone="won"
               active={overZone === 'won'}
-              icon={<Trophy className="h-4 w-4" />}
               onDragOver={(e) => {
                 e.preventDefault();
                 setOverZone('won');
@@ -186,9 +180,8 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
             />
             <DropZone
               label="PERDIDO"
-              tone="destructive"
+              tone="lost"
               active={overZone === 'lost'}
-              icon={<X className="h-4 w-4" />}
               onDragOver={(e) => {
                 e.preventDefault();
                 setOverZone('lost');
@@ -229,14 +222,12 @@ export function PipelineBoard({ pipeline }: { pipeline: Pipeline }) {
 
 function DealCard({
   opp,
-  color,
   dragging,
   onDragStart,
   onDragEnd,
   onClick,
 }: {
   opp: Opportunity;
-  color: string;
   dragging: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -247,33 +238,35 @@ function DealCard({
   return (
     <div
       draggable
+      role="button"
+      tabIndex={0}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onClick={onClick}
-      className={`cursor-pointer rounded-md border bg-card p-2 shadow-[var(--shadow-card)] transition-opacity ${
-        dragging ? 'opacity-40' : 'hover:border-[var(--dex-red)]'
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={`flex cursor-pointer flex-col gap-1.5 border bg-card px-3.5 py-3 transition-[opacity,border-color] ${
+        dragging ? 'opacity-40' : 'hover:border-dex-azul'
       }`}
-      style={{ borderLeft: `3px solid ${color}` }}
     >
-      <p className="text-sm font-medium leading-tight">{opp.title}</p>
+      <p className="font-display text-[15px] leading-tight font-semibold text-dex-marinho">{opp.title}</p>
       <p className="text-xs text-muted-foreground">{opp.company_name}</p>
-      <div className="mt-1.5 flex items-center justify-between">
-        <span className="text-xs font-semibold tabular-nums">{opp.amount != null ? formatBRL(opp.amount) : '—'}</span>
+      <div className="mt-1 flex items-center justify-between gap-2">
+        <span className="font-display text-base font-semibold text-dex-azul tabular-nums">
+          {opp.amount != null ? formatBRL(opp.amount) : '—'}
+        </span>
         <div className="flex items-center gap-1.5">
           {rot !== 'fresh' && (
-            <span
-              className="inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] font-medium"
-              style={{
-                background: rot === 'danger' ? 'var(--destructive)' : 'var(--warning)',
-                color: rot === 'danger' ? 'var(--destructive-foreground)' : 'var(--warning-foreground)',
-              }}
-              title={`Parado há ${days} dias`}
-            >
-              <Clock className="h-2.5 w-2.5" /> {days}d
-            </span>
+            <StatusBadge tone={rot === 'danger' ? 'alert' : 'neutral'} className="h-5 px-1.5 text-[11px]">
+              <span title={`Parado há ${days} dias`}>{days}d</span>
+            </StatusBadge>
           )}
           <span
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold text-secondary-foreground"
+            className="flex size-6 items-center justify-center bg-dex-tint font-display text-[11px] font-bold text-dex-azul"
             title={opp.owner ?? 'Sem responsável'}
           >
             {ownerInitials(opp.owner)}
@@ -288,33 +281,31 @@ function DropZone({
   label,
   tone,
   active,
-  icon,
   onDragOver,
   onDragLeave,
   onDrop,
 }: {
   label: string;
-  tone: 'success' | 'destructive';
+  tone: 'won' | 'lost';
   active: boolean;
-  icon: React.ReactNode;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: () => void;
   onDrop: () => void;
 }) {
-  const c = tone === 'success' ? 'var(--success)' : 'var(--destructive)';
+  const c = tone === 'won' ? 'var(--dex-azul)' : 'var(--dex-magenta)';
   return (
     <div
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      className="flex items-center justify-center gap-2 rounded-md border-2 border-dashed py-4 text-sm font-semibold uppercase tracking-wide transition-colors"
+      className="flex items-center justify-center border-2 border-dashed py-4 font-display text-sm font-bold tracking-[0.08em] uppercase transition-colors"
       style={{
         borderColor: c,
         color: c,
-        background: active ? `color-mix(in srgb, ${c} 12%, transparent)` : 'transparent',
+        background: active ? `color-mix(in srgb, ${c} 10%, transparent)` : 'transparent',
       }}
     >
-      {icon} {label}
+      {label}
     </div>
   );
 }
@@ -340,35 +331,35 @@ function NewDealForm({
   };
 
   return (
-    <form onSubmit={submit} className="flex flex-wrap items-end gap-2">
-      <Input
-        placeholder="Título da oportunidade"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="min-w-48 flex-1"
-      />
-      <Select value={companyId?.toString() ?? ''} onValueChange={(v) => setCompanyId(Number(v))}>
-        <SelectTrigger className="w-56">
-          <SelectValue placeholder="Empresa" />
-        </SelectTrigger>
-        <SelectContent>
-          {companies.map((c) => (
-            <SelectItem key={c.id} value={c.id.toString()}>
-              {c.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Input
-        placeholder="Valor (R$)"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        className="w-36"
-        inputMode="decimal"
-      />
-      <Button type="submit" disabled={!title.trim() || companyId === undefined}>
-        <Plus className="mr-1 h-4 w-4" /> Adicionar
-      </Button>
-    </form>
+    <Panel title="Nova oportunidade">
+      <form
+        onSubmit={submit}
+        className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_260px_160px_auto]"
+      >
+        <FieldLabel label="Título">
+          <Input placeholder="Ex.: Migração do DW para Databricks" value={title} onChange={(e) => setTitle(e.target.value)} />
+        </FieldLabel>
+        <FieldLabel label="Empresa">
+          <Select value={companyId?.toString() ?? ''} onValueChange={(v) => setCompanyId(Number(v))}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Selecione uma empresa" />
+            </SelectTrigger>
+            <SelectContent>
+              {companies.map((c) => (
+                <SelectItem key={c.id} value={c.id.toString()}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FieldLabel>
+        <FieldLabel label="Valor (R$)">
+          <Input placeholder="0,00" value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+        </FieldLabel>
+        <Button type="submit" className="justify-self-start" disabled={!title.trim() || companyId === undefined}>
+          Adicionar
+        </Button>
+      </form>
+    </Panel>
   );
 }

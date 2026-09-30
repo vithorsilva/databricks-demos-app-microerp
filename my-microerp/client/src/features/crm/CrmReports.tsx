@@ -1,23 +1,15 @@
 import { useState } from 'react';
 import { BarChart, DonutChart, Input, Skeleton } from '@databricks/appkit-ui/react';
-import { KpiCard } from '@/components/brand/index.js';
+import { ErrorBanner, FieldLabel, KpiCard, Panel } from '@/components/brand/index.js';
 import { formatBRL } from '@/lib/format.js';
 import { useInsights } from './hooks.js';
 import type { InsightsResponse } from '@shared/crm/types.js';
 
-const BLUE = '#0d4a8b';
-const LIGHT_BLUE = '#1565b8';
-const GREEN = '#1d8a3e';
-const RED = '#ed1c24';
-
-function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-md border bg-card p-4">
-      <h3 className="mb-3 text-sm font-semibold">{title}</h3>
-      {children}
-    </section>
-  );
-}
+// Paleta DEX para gráficos: pares sempre diferentes também em luminosidade.
+const AZUL = '#005996';
+const CIANO = '#89c5d3';
+const MARINHO = '#0c1d40';
+const VERMELHO = '#e61c24';
 
 function EmptyChart({ message }: { message: string }) {
   return <p className="py-10 text-center text-sm text-muted-foreground">{message}</p>;
@@ -29,19 +21,17 @@ export function CrmReports({ pipelineId }: { pipelineId: number | undefined }) {
   const { data, loading, error } = useInsights(pipelineId, from, to);
 
   return (
-    <div className="space-y-4 pt-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end gap-3">
-        <label className="space-y-1">
-          <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">De</span>
+        <FieldLabel label="De">
           <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-44" />
-        </label>
-        <label className="space-y-1">
-          <span className="block text-xs font-medium uppercase tracking-wide text-muted-foreground">Até</span>
+        </FieldLabel>
+        <FieldLabel label="Até">
           <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-44" />
-        </label>
+        </FieldLabel>
       </div>
 
-      {error && <div className="text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
+      {error && <ErrorBanner message={error} />}
 
       {loading || !data ? (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -110,7 +100,7 @@ function Reports({ data }: { data: InsightsResponse }) {
                 xKey="Estágio"
                 yKey="Valor"
                 orientation="horizontal"
-                colors={[BLUE]}
+                colors={[AZUL]}
                 height={220}
               />
               <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
@@ -135,7 +125,7 @@ function Reports({ data }: { data: InsightsResponse }) {
               data={forecastData}
               xKey="Mês"
               yKey={['Valor', 'Ponderado']}
-              colors={[BLUE, LIGHT_BLUE]}
+              colors={[AZUL, CIANO]}
               height={260}
             />
           )}
@@ -145,7 +135,7 @@ function Reports({ data }: { data: InsightsResponse }) {
           {won_lost.won_count + won_lost.lost_count === 0 ? (
             <EmptyChart message="Nenhum negócio fechado no período." />
           ) : (
-            <DonutChart data={wonLostData} xKey="Resultado" yKey="Quantidade" colors={[GREEN, RED]} height={220} />
+            <DonutChart data={wonLostData} xKey="Resultado" yKey="Quantidade" colors={[AZUL, VERMELHO]} height={220} />
           )}
         </Panel>
 
@@ -158,7 +148,7 @@ function Reports({ data }: { data: InsightsResponse }) {
               xKey="Motivo"
               yKey="Negócios"
               orientation="horizontal"
-              colors={[RED]}
+              colors={[MARINHO]}
               height={220}
             />
           )}
@@ -172,7 +162,7 @@ function Reports({ data }: { data: InsightsResponse }) {
               data={ownerData}
               xKey="Responsável"
               yKey={['Ganho', 'Em aberto']}
-              colors={[GREEN, BLUE]}
+              colors={[AZUL, CIANO]}
               height={260}
             />
           )}

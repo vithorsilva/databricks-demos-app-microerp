@@ -6,7 +6,6 @@ import {
   SheetTitle,
   Input,
   Button,
-  Badge,
   Select,
   SelectTrigger,
   SelectValue,
@@ -15,18 +14,10 @@ import {
   Separator,
   Skeleton,
 } from '@databricks/appkit-ui/react';
-import { Trophy, X, Trash2, Check, Phone, Mail, Users, CheckSquare, StickyNote, Plus } from 'lucide-react';
+import { FieldLabel, StatusBadge, TextAction } from '@/components/brand/index.js';
 import { useActivities } from './hooks.js';
 import { ACTIVITY_META } from './lib.js';
 import type { Opportunity, Pipeline, ActivityType, UpdateOpportunityBody } from '@shared/crm/types.js';
-
-const ACTIVITY_ICON: Record<ActivityType, typeof Phone> = {
-  call: Phone,
-  email: Mail,
-  meeting: Users,
-  task: CheckSquare,
-  note: StickyNote,
-};
 
 export function OpportunityDrawer({
   opportunity,
@@ -117,35 +108,34 @@ function DealEditor({
         <SheetTitle className="pr-6">{opportunity.title}</SheetTitle>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>{opportunity.company_name}</span>
-          <Badge variant="secondary">{opportunity.stage_name}</Badge>
+          <StatusBadge tone="brand">{opportunity.stage_name}</StatusBadge>
         </div>
       </SheetHeader>
 
       <div className="space-y-5 px-4 pb-8">
         <div className="flex gap-2">
           <Button
-            size="sm"
-            className="flex-1 text-white"
-            style={{ background: 'var(--success)' }}
+            className="flex-1"
             onClick={() => {
               void markWon();
             }}
           >
-            <Trophy className="mr-1 h-4 w-4" /> Ganho
+            Marcar ganho
           </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => setLosing((v) => !v)}>
-            <X className="mr-1 h-4 w-4" /> Perdido
+          <Button variant="outline" className="flex-1" onClick={() => setLosing((v) => !v)} aria-expanded={losing}>
+            Marcar perdido
           </Button>
         </div>
 
         {losing && (
-          <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
-            <p className="text-xs font-medium text-destructive">Motivo da perda</p>
-            <Input
-              placeholder="Ex.: preço, concorrente, sem orçamento..."
-              value={lostReason}
-              onChange={(e) => setLostReason(e.target.value)}
-            />
+          <div className="space-y-3 border border-dex-magenta bg-dex-magenta/6 p-4">
+            <FieldLabel label="Motivo da perda">
+              <Input
+                placeholder="Ex.: preço, concorrente, sem orçamento..."
+                value={lostReason}
+                onChange={(e) => setLostReason(e.target.value)}
+              />
+            </FieldLabel>
             <Button
               size="sm"
               variant="destructive"
@@ -190,7 +180,6 @@ function DealEditor({
             </Select>
           </Field>
           <Button
-            size="sm"
             onClick={() => {
               void handleSave();
             }}
@@ -205,29 +194,23 @@ function DealEditor({
         <ActivitiesTimeline opportunityId={opportunity.id} />
 
         <Separator />
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-muted-foreground hover:text-destructive"
+        <TextAction
+          tone="muted"
+          className="px-0"
           onClick={() => {
             onDelete(opportunity.id);
             onClose();
           }}
         >
-          <Trash2 className="mr-1 h-4 w-4" /> Excluir oportunidade
-        </Button>
+          Excluir oportunidade
+        </TextAction>
       </div>
     </>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block space-y-1">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
-      {children}
-    </label>
-  );
+  return <FieldLabel label={label}>{children}</FieldLabel>;
 }
 
 function ActivitiesTimeline({ opportunityId }: { opportunityId: number }) {
@@ -244,7 +227,7 @@ function ActivitiesTimeline({ opportunityId }: { opportunityId: number }) {
 
   return (
     <div className="space-y-3">
-      <h4 className="text-sm font-semibold">Atividades</h4>
+      <h4 className="font-display text-base font-semibold text-dex-azul">Atividades</h4>
       <form onSubmit={add} className="flex items-end gap-2">
         <Select value={type} onValueChange={(v) => setType(v as ActivityType)}>
           <SelectTrigger className="w-32">
@@ -259,8 +242,8 @@ function ActivitiesTimeline({ opportunityId }: { opportunityId: number }) {
           </SelectContent>
         </Select>
         <Input placeholder="Assunto" value={subject} onChange={(e) => setSubject(e.target.value)} className="flex-1" />
-        <Button type="submit" size="icon" disabled={!subject.trim()} aria-label="Adicionar atividade">
-          <Plus className="h-4 w-4" />
+        <Button type="submit" disabled={!subject.trim()}>
+          Adicionar
         </Button>
       </form>
 
@@ -269,40 +252,33 @@ function ActivitiesTimeline({ opportunityId }: { opportunityId: number }) {
         <p className="text-xs text-muted-foreground">Nenhuma atividade registrada.</p>
       )}
       <ul className="space-y-2">
-        {activities.map((a) => {
-          const Icon = ACTIVITY_ICON[a.type];
-          return (
-            <li key={a.id} className="flex items-start gap-2 rounded-md border bg-card p-2 text-sm">
-              <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <p className={a.done ? 'text-muted-foreground line-through' : 'font-medium'}>{a.subject}</p>
-                <p className="text-xs text-muted-foreground">{ACTIVITY_META[a.type].label}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
+        {activities.map((a) => (
+          <li key={a.id} className="flex items-start gap-3 border bg-card px-3 py-2.5 text-sm">
+            <span className="mt-0.5 w-16 shrink-0 font-display text-[11px] font-bold tracking-[0.06em] text-dex-azul uppercase">
+              {ACTIVITY_META[a.type].label}
+            </span>
+            <p className={`min-w-0 flex-1 ${a.done ? 'text-muted-foreground line-through' : 'font-medium'}`}>{a.subject}</p>
+            <div className="flex shrink-0 items-center">
+              <TextAction
+                className="min-h-0 py-0.5"
                 onClick={() => {
                   void toggleActivity(a.id, !a.done);
                 }}
-                aria-label="Concluir atividade"
               >
-                <Check className={`h-4 w-4 ${a.done ? 'text-[var(--success)]' : 'text-muted-foreground'}`} />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                {a.done ? 'Reabrir' : 'Concluir'}
+              </TextAction>
+              <TextAction
+                tone="muted"
+                className="min-h-0 py-0.5"
                 onClick={() => {
                   void deleteActivity(a.id);
                 }}
-                aria-label="Excluir atividade"
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </li>
-          );
-        })}
+                Excluir
+              </TextAction>
+            </div>
+          </li>
+        ))}
       </ul>
     </div>
   );

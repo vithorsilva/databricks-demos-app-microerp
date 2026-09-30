@@ -13,7 +13,7 @@ let failedRequests: string[] = [];
 test('smoke test - app loads and displays home page', async ({ page }) => {
   await page.goto('/');
 
-  // Cabeçalho da Home (PageHeader renderiza um <h2>).
+  // Cabeçalho da Home (PageHeader renderiza um <h1>).
   await expect(page.getByRole('heading', { name: 'Micro ERP DEX' })).toBeVisible();
 
   // Assistente Genie: o card e o input do chat estão presentes (sem depender de resposta do Genie).
@@ -23,9 +23,10 @@ test('smoke test - app loads and displays home page', async ({ page }) => {
   // Atalhos dos módulos continuam acessíveis.
   await expect(page.getByRole('heading', { name: 'Módulos' })).toBeVisible();
 
-  // Navegação principal.
-  await expect(page.getByRole('link', { name: 'Home' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'CRM' })).toBeVisible();
+  // Navegação principal (escopo no <nav>: os cards de módulo também são links "CRM ...").
+  const nav = page.getByRole('navigation', { name: 'Módulos' });
+  await expect(nav.getByRole('link', { name: 'Início', exact: true })).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'CRM', exact: true })).toBeVisible();
 });
 
 // ── Lifecycle hooks ─────────────────────────────────────────────────────────

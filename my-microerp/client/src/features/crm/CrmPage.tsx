@@ -18,7 +18,6 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
-  Badge,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -26,8 +25,16 @@ import {
   DialogFooter,
   DialogClose,
 } from '@databricks/appkit-ui/react';
-import { Trash2, Pencil } from 'lucide-react';
-import { PageHeader } from '@/components/brand/index.js';
+import {
+  PageHeader,
+  Panel,
+  FieldLabel,
+  ErrorBanner,
+  EmptyState,
+  StatusBadge,
+  TextAction,
+  type StatusTone,
+} from '@/components/brand/index.js';
 import { useCompanies, useContacts, usePipelines } from './hooks.js';
 import { PipelineBoard } from './PipelineBoard.js';
 import { PipelineManager } from './PipelineManager.js';
@@ -35,19 +42,15 @@ import { CrmReports } from './CrmReports.js';
 import { CompanyDrawer } from './CompanyDrawer.js';
 import type { Company, CompanyType, Contact } from '@shared/crm/types.js';
 
-const TYPE_LABEL: Record<CompanyType, string> = {
-  customer: 'Cliente',
-  supplier: 'Fornecedor',
-  both: 'Ambos',
+const TYPE_META: Record<CompanyType, { label: string; tone: StatusTone }> = {
+  customer: { label: 'Cliente', tone: 'brand' },
+  supplier: { label: 'Fornecedor', tone: 'dark' },
+  both: { label: 'Ambos', tone: 'neutral' },
 };
-
-function ErrorBanner({ message }: { message: string }) {
-  return <div className="text-destructive bg-destructive/10 p-3 rounded-md mb-4">{message}</div>;
-}
 
 export function CrmPage() {
   return (
-    <div className="mx-auto w-full max-w-7xl">
+    <>
       <PageHeader title="CRM corporativo" subtitle="Funil de vendas, relatórios, empresas e contatos." />
       <Tabs defaultValue="pipeline">
         <TabsList>
@@ -69,7 +72,36 @@ export function CrmPage() {
           <ContactsSection />
         </TabsContent>
       </Tabs>
-    </div>
+    </>
+  );
+}
+
+function PipelineSelect({
+  pipelines,
+  currentId,
+  setCurrentId,
+  disabled,
+}: {
+  pipelines: { id: number; name: string }[];
+  currentId: number | undefined;
+  setCurrentId: (id: number) => void;
+  disabled: boolean;
+}) {
+  return (
+    <FieldLabel label="Funil" className="w-full sm:w-72">
+      <Select value={currentId?.toString() ?? ''} onValueChange={(v) => setCurrentId(Number(v))} disabled={disabled}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder="Selecione um funil" />
+        </SelectTrigger>
+        <SelectContent>
+          {pipelines.map((p) => (
+            <SelectItem key={p.id} value={p.id.toString()}>
+              {p.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FieldLabel>
   );
 }
 
@@ -79,24 +111,14 @@ function FunnelTab() {
   const { pipelines, current, currentId, setCurrentId, loading, error } = pm;
 
   return (
-    <div className="space-y-4 pt-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Select
-          value={currentId?.toString() ?? ''}
-          onValueChange={(v) => setCurrentId(Number(v))}
+    <div className="space-y-5 pt-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <PipelineSelect
+          pipelines={pipelines}
+          currentId={currentId}
+          setCurrentId={setCurrentId}
           disabled={loading || pipelines.length === 0}
-        >
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Selecione um funil" />
-          </SelectTrigger>
-          <SelectContent>
-            {pipelines.map((p) => (
-              <SelectItem key={p.id} value={p.id.toString()}>
-                {p.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
         <PipelineManager
           current={current}
           createPipeline={(name) => {
@@ -123,7 +145,9 @@ function FunnelTab() {
       {error && <ErrorBanner message={error} />}
       {loading && <Skeleton className="h-64 w-full" />}
       {!loading && current && <PipelineBoard key={current.id} pipeline={current} />}
-      {!loading && !current && <p className="text-muted-foreground py-8 text-center">Nenhum funil configurado.</p>}
+      {!loading && !current && (
+        <EmptyState title="Nenhum funil configurado" hint="Crie um funil em “Gerenciar funil”." />
+      )}
     </div>
   );
 }
@@ -132,23 +156,13 @@ function FunnelTab() {
 function ReportsTab() {
   const { pipelines, currentId, setCurrentId, loading } = usePipelines();
   return (
-    <div className="space-y-4 pt-4">
-      <Select
-        value={currentId?.toString() ?? ''}
-        onValueChange={(v) => setCurrentId(Number(v))}
+    <div className="space-y-5 pt-6">
+      <PipelineSelect
+        pipelines={pipelines}
+        currentId={currentId}
+        setCurrentId={setCurrentId}
         disabled={loading || pipelines.length === 0}
-      >
-        <SelectTrigger className="w-64">
-          <SelectValue placeholder="Selecione um funil" />
-        </SelectTrigger>
-        <SelectContent>
-          {pipelines.map((p) => (
-            <SelectItem key={p.id} value={p.id.toString()}>
-              {p.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      />
       <CrmReports pipelineId={currentId} />
     </div>
   );
@@ -182,77 +196,94 @@ function CompaniesSection() {
   };
 
   return (
-    <div className="space-y-4 pt-4">
-      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
-        <Input
-          placeholder="Nome da empresa"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="flex-1 min-w-48"
-        />
-        <Select value={type} onValueChange={(v) => setType(v as CompanyType)}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="customer">Cliente</SelectItem>
-            <SelectItem value="supplier">Fornecedor</SelectItem>
-            <SelectItem value="both">Ambos</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} className="w-48" />
-        <Input placeholder="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-40" />
-        <Button type="submit" disabled={submitting || !name.trim()}>
-          {submitting ? 'Salvando...' : 'Adicionar'}
-        </Button>
-      </form>
+    <div className="space-y-5 pt-6">
+      <Panel title="Nova empresa">
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_160px_220px_170px_auto]"
+        >
+          <FieldLabel label="Nome">
+            <Input placeholder="Nome da empresa" value={name} onChange={(e) => setName(e.target.value)} />
+          </FieldLabel>
+          <FieldLabel label="Tipo">
+            <Select value={type} onValueChange={(v) => setType(v as CompanyType)}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="customer">Cliente</SelectItem>
+                <SelectItem value="supplier">Fornecedor</SelectItem>
+                <SelectItem value="both">Ambos</SelectItem>
+              </SelectContent>
+            </Select>
+          </FieldLabel>
+          <FieldLabel label="E-mail">
+            <Input placeholder="contato@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
+          </FieldLabel>
+          <FieldLabel label="Telefone">
+            <Input placeholder="(27) 0000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </FieldLabel>
+          <Button type="submit" className="justify-self-start" disabled={submitting || !name.trim()}>
+            {submitting ? 'Salvando...' : 'Adicionar'}
+          </Button>
+        </form>
+      </Panel>
 
       {error && <ErrorBanner message={error} />}
 
       {loading && <SkeletonRows />}
 
       {!loading && companies.length === 0 && (
-        <p className="text-muted-foreground text-center py-8">Nenhuma empresa cadastrada.</p>
+        <EmptyState title="Nenhuma empresa cadastrada" hint="Cadastre clientes e fornecedores no formulário acima." />
       )}
 
       {!loading && companies.length > 0 && (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>E-mail</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead className="w-12" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {companies.map((c) => (
-              <TableRow key={c.id} className="cursor-pointer" onClick={() => setSelected(c)}>
-                <TableCell className="font-medium">{c.name}</TableCell>
-                <TableCell>
-                  <Badge variant="secondary">{TYPE_LABEL[c.type]}</Badge>
-                </TableCell>
-                <TableCell>{c.email ?? '—'}</TableCell>
-                <TableCell>{c.phone ?? '—'}</TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void deleteCompany(c.id);
-                    }}
-                    className="text-muted-foreground hover:text-destructive"
-                    aria-label="Excluir empresa"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+        <div className="border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="pl-4">Nome</TableHead>
+                <TableHead>Tipo</TableHead>
+                <TableHead>E-mail</TableHead>
+                <TableHead>Telefone</TableHead>
+                <TableHead className="pr-4 text-right">Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {companies.map((c) => (
+                <TableRow key={c.id} className="h-14 cursor-pointer" onClick={() => setSelected(c)}>
+                  <TableCell className="pl-4 font-semibold">{c.name}</TableCell>
+                  <TableCell>
+                    <StatusBadge tone={TYPE_META[c.type].tone}>{TYPE_META[c.type].label}</StatusBadge>
+                  </TableCell>
+                  <TableCell>{c.email ?? '—'}</TableCell>
+                  <TableCell>{c.phone ?? '—'}</TableCell>
+                  <TableCell className="pr-4">
+                    <div className="flex justify-end gap-1">
+                      <TextAction
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelected(c);
+                        }}
+                      >
+                        Histórico
+                      </TextAction>
+                      <TextAction
+                        tone="muted"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void deleteCompany(c.id);
+                        }}
+                      >
+                        Excluir
+                      </TextAction>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       <CompanyDrawer
@@ -297,104 +328,99 @@ function ContactsSection() {
   };
 
   return (
-    <div className="space-y-4 pt-4">
-      <Select
-        value={companyId?.toString() ?? ''}
-        onValueChange={(v) => setCompanyId(Number(v))}
-        disabled={loadingCompanies}
-      >
-        <SelectTrigger className="w-72">
-          <SelectValue placeholder="Selecione uma empresa" />
-        </SelectTrigger>
-        <SelectContent>
-          {companies.map((c) => (
-            <SelectItem key={c.id} value={c.id.toString()}>
-              {c.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+    <div className="space-y-5 pt-6">
+      <FieldLabel label="Empresa" className="w-full sm:w-80">
+        <Select
+          value={companyId?.toString() ?? ''}
+          onValueChange={(v) => setCompanyId(Number(v))}
+          disabled={loadingCompanies}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Selecione uma empresa" />
+          </SelectTrigger>
+          <SelectContent>
+            {companies.map((c) => (
+              <SelectItem key={c.id} value={c.id.toString()}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </FieldLabel>
 
       {companyId === undefined && (
-        <p className="text-muted-foreground text-center py-8">Selecione uma empresa para ver seus contatos.</p>
+        <EmptyState title="Selecione uma empresa" hint="Os contatos são listados por empresa." />
       )}
 
       {companyId !== undefined && (
         <>
-          <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-2">
-            <Input
-              placeholder="Nome do contato"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="flex-1 min-w-48"
-            />
-            <Input placeholder="Cargo" value={role} onChange={(e) => setRole(e.target.value)} className="w-40" />
-            <Input
-              type="email"
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-48"
-            />
-            <Input placeholder="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-40" />
-            <Button type="submit" disabled={!name.trim()}>
-              Adicionar
-            </Button>
-          </form>
+          <Panel title="Novo contato">
+            <form
+              onSubmit={handleSubmit}
+              className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_180px_220px_170px_auto]"
+            >
+              <FieldLabel label="Nome">
+                <Input placeholder="Nome do contato" value={name} onChange={(e) => setName(e.target.value)} />
+              </FieldLabel>
+              <FieldLabel label="Cargo">
+                <Input placeholder="Ex.: Diretor de TI" value={role} onChange={(e) => setRole(e.target.value)} />
+              </FieldLabel>
+              <FieldLabel label="E-mail">
+                <Input type="email" placeholder="nome@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </FieldLabel>
+              <FieldLabel label="Telefone">
+                <Input placeholder="(27) 00000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </FieldLabel>
+              <Button type="submit" className="justify-self-start" disabled={!name.trim()}>
+                Adicionar
+              </Button>
+            </form>
+          </Panel>
 
           {error && <ErrorBanner message={error} />}
           {loading && <SkeletonRows />}
 
           {!loading && contacts.length === 0 && (
-            <p className="text-muted-foreground text-center py-8">Nenhum contato nesta empresa.</p>
+            <EmptyState title="Nenhum contato nesta empresa" hint="Cadastre o primeiro contato no formulário acima." />
           )}
 
           {!loading && contacts.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead>E-mail</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead className="w-20" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {contacts.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.role ?? '—'}</TableCell>
-                    <TableCell>{c.email ?? '—'}</TableCell>
-                    <TableCell>{c.phone ?? '—'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditing(c)}
-                          className="text-muted-foreground hover:text-foreground"
-                          aria-label="Editar contato"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            void deleteContact(c.id);
-                          }}
-                          className="text-muted-foreground hover:text-destructive"
-                          aria-label="Excluir contato"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="pl-4">Nome</TableHead>
+                    <TableHead>Cargo</TableHead>
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead className="pr-4 text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {contacts.map((c) => (
+                    <TableRow key={c.id} className="h-14">
+                      <TableCell className="pl-4 font-semibold">{c.name}</TableCell>
+                      <TableCell>{c.role ?? '—'}</TableCell>
+                      <TableCell>{c.email ?? '—'}</TableCell>
+                      <TableCell>{c.phone ?? '—'}</TableCell>
+                      <TableCell className="pr-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <TextAction onClick={() => setEditing(c)}>Editar</TextAction>
+                          <TextAction
+                            tone="muted"
+                            onClick={() => {
+                              void deleteContact(c.id);
+                            }}
+                          >
+                            Excluir
+                          </TextAction>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
 
           <ContactEditDialog
@@ -461,11 +487,19 @@ function ContactEditForm({
       <DialogHeader>
         <DialogTitle>Editar contato</DialogTitle>
       </DialogHeader>
-      <div className="space-y-3 py-2">
-        <Input placeholder="Nome do contato" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input placeholder="Cargo" value={role} onChange={(e) => setRole(e.target.value)} />
-        <Input type="email" placeholder="E-mail" value={email} onChange={(e) => setEmail(e.target.value)} />
-        <Input placeholder="Telefone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+      <div className="space-y-4 py-2">
+        <FieldLabel label="Nome">
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </FieldLabel>
+        <FieldLabel label="Cargo">
+          <Input value={role} onChange={(e) => setRole(e.target.value)} />
+        </FieldLabel>
+        <FieldLabel label="E-mail">
+          <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        </FieldLabel>
+        <FieldLabel label="Telefone">
+          <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </FieldLabel>
       </div>
       <DialogFooter>
         <DialogClose asChild>
@@ -488,7 +522,7 @@ function SkeletonRows() {
   return (
     <div className="space-y-3">
       {Array.from({ length: 3 }, (_, i) => (
-        <Skeleton key={`sk-${i}`} className="h-10 w-full" />
+        <Skeleton key={`sk-${i}`} className="h-12 w-full" />
       ))}
     </div>
   );

@@ -3,20 +3,19 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Badge,
   Button,
   Skeleton,
   Separator,
 } from '@databricks/appkit-ui/react';
-import { RotateCcw, Trophy, X, Circle } from 'lucide-react';
+import { EmptyState, ErrorBanner, StatusBadge, type StatusTone } from '@/components/brand/index.js';
 import { formatBRL } from '@/lib/format.js';
 import { useCompanyOpportunities } from './hooks.js';
 import type { Company, Opportunity, OpportunityStatus } from '@shared/crm/types.js';
 
-const STATUS_META: Record<OpportunityStatus, { label: string; color: string; icon: typeof Circle }> = {
-  open: { label: 'Aberta', color: 'var(--primary)', icon: Circle },
-  won: { label: 'Ganha', color: 'var(--success)', icon: Trophy },
-  lost: { label: 'Perdida', color: 'var(--destructive)', icon: X },
+const STATUS_META: Record<OpportunityStatus, { label: string; tone: StatusTone }> = {
+  open: { label: 'Aberta', tone: 'neutral' },
+  won: { label: 'Ganha', tone: 'brand' },
+  lost: { label: 'Perdida', tone: 'alert' },
 };
 
 function fmtDate(iso: string | null): string {
@@ -58,11 +57,11 @@ function CompanyOpportunities({ company }: { company: Company }) {
       </SheetHeader>
 
       <div className="space-y-5 px-4 pb-8">
-        {error && <div className="text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
+        {error && <ErrorBanner message={error} />}
         {loading && <Skeleton className="h-40 w-full" />}
 
         {!loading && opportunities.length === 0 && (
-          <p className="text-muted-foreground py-8 text-center">Nenhuma oportunidade para esta empresa.</p>
+          <EmptyState title="Nenhuma oportunidade" hint="Esta empresa ainda não tem oportunidades no CRM." />
         )}
 
         {!loading &&
@@ -71,9 +70,7 @@ function CompanyOpportunities({ company }: { company: Company }) {
               g.items.length > 0 && (
                 <div key={g.status} className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary" style={{ color: STATUS_META[g.status].color }}>
-                      {STATUS_META[g.status].label}
-                    </Badge>
+                    <StatusBadge tone={STATUS_META[g.status].tone}>{STATUS_META[g.status].label}</StatusBadge>
                     <span className="text-xs text-muted-foreground">{g.items.length}</span>
                   </div>
                   <ul className="space-y-2">
@@ -92,16 +89,12 @@ function CompanyOpportunities({ company }: { company: Company }) {
 
 function OpportunityRow({ opp, onReopen }: { opp: Opportunity; onReopen: () => void }) {
   const meta = STATUS_META[opp.status];
-  const Icon = meta.icon;
   const closedAt = opp.status === 'won' ? opp.won_at : opp.status === 'lost' ? opp.lost_at : null;
   return (
-    <li className="rounded-md border bg-card p-3 text-sm">
+    <li className="border bg-card px-4 py-3 text-sm">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <Icon className="h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />
-            <p className="truncate font-medium">{opp.title}</p>
-          </div>
+          <p className="truncate font-display text-[15px] font-semibold text-dex-marinho">{opp.title}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {opp.stage_name} · {opp.amount != null ? formatBRL(opp.amount) : '—'}
           </p>
@@ -111,12 +104,14 @@ function OpportunityRow({ opp, onReopen }: { opp: Opportunity; onReopen: () => v
             </p>
           )}
           {opp.status === 'lost' && opp.lost_reason && (
-            <p className="text-xs text-destructive">Motivo: {opp.lost_reason}</p>
+            <p className="text-xs text-dex-texto">
+              <span className="font-semibold text-dex-magenta">Motivo:</span> {opp.lost_reason}
+            </p>
           )}
         </div>
         {opp.status !== 'open' && (
           <Button variant="outline" size="sm" onClick={onReopen} className="shrink-0">
-            <RotateCcw className="mr-1 h-3.5 w-3.5" /> Reabrir
+            Reabrir
           </Button>
         )}
       </div>

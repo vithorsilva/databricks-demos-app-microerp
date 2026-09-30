@@ -1,12 +1,5 @@
 import type { ActivityType } from '@shared/crm/types.js';
 
-/** Paleta para a barra de cor das colunas/cards do funil (cicla por posição). */
-export const STAGE_COLORS = ['#0d4a8b', '#1565b8', '#d99000', '#1d8a3e', '#7c3aed', '#ed1c24', '#6b7080'];
-
-export function stageColor(position: number): string {
-  return STAGE_COLORS[position % STAGE_COLORS.length];
-}
-
 /** Dias inteiros decorridos desde uma data ISO (timestamptz). */
 export function daysSince(iso: string | null): number {
   if (!iso) return 0;
