@@ -6,12 +6,14 @@ banco transacional (OLTP).
 
 A app vive na pasta [`my-microerp/`](my-microerp/) e entrega três módulos de negócio:
 
-| Módulo | Rota | Descrição |
-|--------|------|-----------|
-| **CRM** | `/crm` | Empresas, contatos e pipeline de vendas |
-| **Contas a Receber** | `/receivables` | Títulos a receber (AR) |
-| **Contas a Pagar** | `/payables` | Títulos a pagar (AP) |
-| _Todos_ | `/todos` | CRUD de exemplo que serve de referência de formato |
+
+| Módulo               | Rota           | Descrição                                          |
+| -------------------- | -------------- | -------------------------------------------------- |
+| **CRM**              | `/crm`         | Empresas, contatos e pipeline de vendas            |
+| **Contas a Receber** | `/receivables` | Títulos a receber (AR)                             |
+| **Contas a Pagar**   | `/payables`    | Títulos a pagar (AP)                               |
+| *Todos*              | `/todos`       | CRUD de exemplo que serve de referência de formato |
+
 
 **Stack:** Node.js + Express (backend) · React 19 + TypeScript + Vite + Tailwind (frontend) ·
 Zod (contratos compartilhados) · AppKit SDK + Lakebase (Databricks).
@@ -30,13 +32,15 @@ seguintes.
 4. Configurar databricks.yml (host + recursos Postgres)
 5. npm install
 6. DEPLOY  ← obrigatório ANTES de rodar localmente (regra de ouro)
-7. npm run dev (desenvolvimento local)
+7. Desenvolvimento local (databricks apps dev-remote — recomendado)
 ```
 
-> ⚠️ **Regra de ouro:** faça o **deploy da app ANTES** do primeiro `npm run dev`.
-> O Service Principal da app precisa ser o **dono** do schema no Postgres. Se você rodar local
-> primeiro, sua identidade vira dona do schema e a app deployada quebra com
-> `permission denied for schema app`. Detalhes e recuperação na seção
+> ⚠️ **Regra de ouro:** faça o **deploy da app ANTES** de rodá-la localmente pela primeira vez.
+> O Service Principal da app precisa ser o **dono** do schema no Postgres. Se o seu usuário abrir
+> uma conexão com o Postgres antes do deploy (é o que `npm run dev` faz), sua identidade vira dona
+> do schema e a app deployada quebra com `permission denied for schema app`. Prefira
+> `databricks apps dev-remote` no dia a dia (seção 7) — ele nunca abre uma conexão local com o
+> Postgres, pois o backend continua rodando no app já implantado. Detalhes e recuperação na seção
 > [Lakebase: ordem de implantação](#lakebase-ordem-de-implantação).
 
 ---
@@ -149,7 +153,7 @@ databricks postgres update-endpoint `
   --profile dex-producao
 ```
 
-> Equivalente em Bash: troque as crases ` por barras invertidas `\` e remova o escape `\"`.
+> Equivalente em Bash: troque as crases `por barras invertidas`` e remova o escape `\"`.
 
 ---
 
@@ -225,6 +229,34 @@ A URL da app aparece na saída de `databricks apps get`.
 ## 7. Desenvolvimento local
 
 Depois que o **deploy** criou o schema sob o Service Principal, você pode desenvolver localmente.
+Há dois modos — **use o modo A no dia a dia**; ele é o único que não corre risco de "estragar" o
+Lakebase.
+
+### 7.A `databricks apps dev-remote` (recomendado)
+
+```bash
+# a partir de my-microerp/
+databricks apps dev-remote --name my-microerp --profile dex-producao
+```
+
+Esse comando sobe um servidor Vite local e cria uma **ponte via WebSocket** com o app **já
+implantado**: o navegador conversa com o backend implantado, que repassa as requisições de
+UI/queries de volta para a sua máquina (hot reload). Como o backend continua rodando remotamente
+como o Service Principal, **nenhuma conexão nova é aberta com o Postgres a partir da sua máquina**
+— logo não há como seu usuário virar dono de um schema por engano. É o modo seguro por padrão.
+
+Limitação: apenas `client/` (React/TS/CSS) e `config/queries/*.sql` recarregam a quente. Mudanças
+em `server/` (rotas, services, repositories — inclusive as queries do Lakebase deste projeto)
+exigem um novo `databricks bundle deploy` para valerem. Rode
+`databricks apps dev-remote --help` para ver as demais flags (porta customizada,
+`--auto-approve`, etc.).
+
+### 7.B `npm run dev` (apenas quando precisar de hot reload no backend)
+
+`npm run dev` sobe o servidor Express **localmente** e abre sua **própria conexão com o
+Postgres** usando as credenciais do seu `.env` — ou seja, é o seu usuário (não o Service
+Principal) quem fala com o Lakebase. Use esse modo só quando precisar iterar rápido em código de
+`server/`, e **somente depois do primeiro deploy**.
 
 Crie o `.env` a partir do exemplo e preencha com os dados do seu Lakebase:
 
@@ -253,6 +285,9 @@ npm run dev
 > ao dono do projeto Lakebase o papel `databricks_superuser` para a sua identidade. Ele concede
 > acesso DML **sem** torná-lo dono dos schemas — evitando recair no problema de ownership.
 
+> ⚠️ Nunca rode `npm run dev` **antes** do primeiro deploy — é exatamente essa sequência que faz
+> seu usuário virar dono do schema `app` e quebrar a app implantada (ver seção seguinte).
+
 ---
 
 ## Lakebase: ordem de implantação
@@ -265,8 +300,8 @@ roda esse comando primeiro vira o dono do schema**. Como o Service Principal só
 
 - **Deploy primeiro** → o SP cria o schema `app` e vira dono → tudo funciona. ✅
 - **Local primeiro** → sua identidade de usuário vira dona do schema. A app deployada (que conecta
-  como o SP) recebe `permission denied for schema app` (código `42501`) e as telas retornam
-  `Internal server error`. ❌
+como o SP) recebe `permission denied for schema app` (código `42501`) e as telas retornam
+`Internal server error`. ❌
 
 ### Recuperação do `permission denied for schema app`
 
@@ -278,20 +313,20 @@ usuário comum.
 > para um schema temporário).
 
 1. **Drope o schema** (conecte com sua identidade; precisa de `databricks_superuser`):
-   ```sql
+  ```sql
    DROP SCHEMA IF EXISTS app CASCADE;
-   ```
+  ```
 2. **Reinicie a app sem nenhuma conexão sua no meio** — qualquer `CREATE SCHEMA` ou query de
-   inspeção entre o drop e o boot recria o schema como seu de novo:
-   ```bash
+ inspeção entre o drop e o boot recria o schema como seu de novo:
+  ```bash
    databricks apps stop  my-microerp --profile dex-producao
    databricks apps start my-microerp --profile dex-producao
-   ```
+  ```
 3. **Confirme que o dono agora é o SP** — deve retornar o `service_principal_client_id`
-   (de `databricks apps get my-microerp`):
-   ```sql
+ (de `databricks apps get my-microerp`):
+  ```sql
    SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = 'app';
-   ```
+  ```
 
 > `psql` não vem instalado por padrão no Windows. Para rodar SQL ad-hoc, use
 > `databricks psql --project db-demo-microerp-dex -- -c "<SQL>"` (requer `psql` no PATH), ou
@@ -321,6 +356,10 @@ npm run test:e2e        # Playwright
 
 # Redeploy após mudanças
 databricks bundle deploy --profile dex-producao
+
+# Desenvolvimento local (ver seção 7)
+databricks apps dev-remote --name my-microerp --profile dex-producao  # recomendado
+npm run dev                                                            # só após 1º deploy + databricks_superuser
 ```
 
 ---
@@ -348,4 +387,4 @@ arquivo `specs/<feature>.md` antes de qualquer código.
 
 ---
 
-<sub>Desenvolvido pela DEX | Datasource Expert · Microsoft Americas Partner of the Year 2024.</sub>
+Desenvolvido pela DEX | Datasource Expert · Databricks Partner Consulting Services
