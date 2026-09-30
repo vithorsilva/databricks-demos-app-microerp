@@ -10,7 +10,7 @@ import {
   Input,
   Button,
 } from '@databricks/appkit-ui/react';
-import { Trophy, Plus, Trash2 } from 'lucide-react';
+import { FieldLabel, TextAction } from '@/components/brand/index.js';
 import { formatBRL } from '@/lib/format.js';
 import type { Opportunity, WinOpportunityBody } from '@shared/crm/types.js';
 
@@ -144,14 +144,12 @@ function WinForm({
 
       <div className="space-y-4 py-2">
         <div className="flex items-end gap-2">
-          <label className="flex-1 space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Valor total (R$)</span>
+          <FieldLabel label="Valor total (R$)" className="flex-1">
             <Input value={total} inputMode="decimal" onChange={(e) => setTotal(e.target.value)} />
-          </label>
-          <label className="w-24 space-y-1">
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Parcelas</span>
+          </FieldLabel>
+          <FieldLabel label="Parcelas" className="w-24">
             <Input value={count} inputMode="numeric" onChange={(e) => setCount(e.target.value)} />
-          </label>
+          </FieldLabel>
           <Button type="button" variant="outline" onClick={generate}>
             Gerar
           </Button>
@@ -163,42 +161,37 @@ function WinForm({
             const invalid = !Number.isFinite(amt) || amt <= 0;
             return (
               <div key={r.id} className="flex items-center gap-2">
-                <span className="w-6 text-xs text-muted-foreground tabular-nums">{i + 1}.</span>
+                <span className="w-6 font-display text-sm font-semibold text-dex-azul tabular-nums">{i + 1}.</span>
                 <Input
                   value={r.amount}
                   inputMode="decimal"
                   placeholder="Valor"
                   onChange={(e) => updateRow(r.id, { amount: e.target.value })}
-                  className={`w-32 ${invalid ? 'border-destructive' : ''}`}
+                  aria-invalid={invalid}
+                  aria-label={`Valor da parcela ${i + 1}`}
+                  className="w-32"
                 />
                 <Input
                   type="date"
                   value={r.due_date}
                   onChange={(e) => updateRow(r.id, { due_date: e.target.value })}
+                  aria-label={`Vencimento da parcela ${i + 1}`}
                   className="flex-1"
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                  onClick={() => removeRow(r.id)}
-                  disabled={rows.length <= 1}
-                  aria-label="Remover parcela"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <TextAction tone="muted" onClick={() => removeRow(r.id)} disabled={rows.length <= 1}>
+                  Remover
+                </TextAction>
               </div>
             );
           })}
-          <Button type="button" variant="ghost" size="sm" onClick={addRow}>
-            <Plus className="mr-1 h-4 w-4" /> Adicionar parcela
-          </Button>
+          <TextAction className="px-0" onClick={addRow}>
+            Adicionar parcela
+          </TextAction>
         </div>
 
         <div className="flex items-center justify-between border-t pt-2 text-sm">
           <span className="text-muted-foreground">Total das parcelas</span>
-          <span className="font-semibold tabular-nums">{formatBRL(sum)}</span>
+          <span className="font-display text-base font-semibold text-dex-azul tabular-nums">{formatBRL(sum)}</span>
         </div>
       </div>
 
@@ -207,14 +200,12 @@ function WinForm({
           <Button variant="outline">Cancelar</Button>
         </DialogClose>
         <Button
-          className="text-white"
-          style={{ background: 'var(--success)' }}
           onClick={() => {
             void confirm();
           }}
           disabled={!canConfirm || saving}
         >
-          <Trophy className="mr-1 h-4 w-4" /> {saving ? 'Salvando...' : 'Confirmar ganho'}
+          {saving ? 'Salvando...' : 'Confirmar ganho'}
         </Button>
       </DialogFooter>
     </>

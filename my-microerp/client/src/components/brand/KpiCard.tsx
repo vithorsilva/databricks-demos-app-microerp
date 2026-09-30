@@ -1,10 +1,8 @@
 import { cn } from '@/lib/utils.js';
 
 /**
- * KpiCard — card de indicador da marca DEX.
- * Flat por padrão; no hover sobe 3px, ganha --shadow-card e borda --dex-red.
- * `highlight` aplica acento vermelho ao valor (usado em indicadores críticos,
- * ex.: nº de títulos vencidos).
+ * KpiCard — indicador da marca DEX: superfície plana, barra superior dex-azul
+ * (dex-vermelho em `highlight`, para indicadores que pedem atenção) e valor em Barlow.
  */
 export function KpiCard({
   label,
@@ -22,22 +20,21 @@ export function KpiCard({
   return (
     <div
       className={cn(
-        'group rounded-md border bg-card p-4 transition-all duration-150',
-        'hover:-translate-y-[3px] hover:shadow-[var(--shadow-card)]',
+        'flex flex-col gap-2 border border-t-4 bg-card px-5 py-4',
+        highlight ? 'border-t-dex-vermelho' : 'border-t-dex-azul',
         className,
       )}
-      style={{ borderColor: 'var(--border)' }}
-      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--dex-red)')}
-      onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="font-display text-xs font-bold tracking-[0.08em] text-muted-foreground uppercase">{label}</p>
       <p
-        className="mt-1 text-2xl font-bold tabular-nums"
-        style={{ color: highlight ? 'var(--dex-red)' : 'var(--foreground)' }}
+        className={cn(
+          'font-display text-2xl leading-tight font-semibold tabular-nums md:text-[28px]',
+          highlight ? 'text-dex-marinho' : 'text-dex-azul',
+        )}
       >
         {value}
       </p>
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );
 }

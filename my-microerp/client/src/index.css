@@ -1,65 +1,265 @@
 @import "@databricks/appkit-ui/styles.css";
 
-/* ── Identidade Visual DEX (tema claro) ──────────────────────────────
-   Mapeamento dos tokens shadcn para a paleta da marca DEX.
-   Ver specs/feat_0005_design_system_dex.md. Somente tema claro. */
+/* Tailwind v4 liga `dark:` ao prefers-color-scheme por padrão; os componentes do AppKit usam
+   `dark:bg-input/30` etc. A marca é só tema claro: `dark:` passa a depender da classe .dark. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Identidade visual DEX 2026 ─────────────────────────────────────
+   Fonte: design system dex-design-system-2026-09 (tokens.json).
+   Ver specs/feat_0006_identidade_visual_dex_2026.md. Somente tema claro:
+   <html class="light"> em index.html desativa o dark mode do AppKit. */
+
+/* A marca é angular: todos os raios do Tailwind em 0 (rounded-full segue livre). */
+@theme {
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+
+  --font-sans: "Manrope", "Segoe UI", Arial, sans-serif;
+  --font-display: "Barlow", "Arial Narrow", Arial, sans-serif;
+
+  --color-dex-azul: #005996;
+  --color-dex-vermelho: #e61c24;
+  --color-dex-marinho: #0c1d40;
+  --color-dex-ciano: #89c5d3;
+  --color-dex-cinza: #d4d3d3;
+  --color-dex-magenta: #c22653;
+  --color-dex-texto: #262626;
+  --color-dex-cinza-texto: #575756;
+  --color-dex-tint: #eef4f9;
+}
+
 :root {
-  --radius: 6px;
+  --radius: 0px;
 
   --background: #ffffff;
-  --foreground: #051a35;
+  --foreground: #262626;
 
   --card: #ffffff;
-  --card-foreground: #051a35;
+  --card-foreground: #262626;
   --popover: #ffffff;
-  --popover-foreground: #051a35;
+  --popover-foreground: #262626;
 
-  --primary: #0d4a8b;
+  --primary: #005996;
   --primary-foreground: #ffffff;
 
-  --secondary: #f4f5f8;
-  --secondary-foreground: #0d4a8b;
+  /* secondary/muted/accent são superfícies neutras (hover de ghost/outline, skeleton). */
+  --secondary: #f2f2f2;
+  --secondary-foreground: #0c1d40;
+  --muted: #f2f2f2;
+  --muted-foreground: #575756;
+  --accent: #eef4f9;
+  --accent-foreground: #0c1d40;
 
-  --muted: #f4f5f8;
-  --muted-foreground: #6b7080;
-
-  --accent: #ed1c24;
-  --accent-foreground: #ffffff;
-
-  --destructive: #ed1c24;
+  /* Magenta: branco sobre ele 5.7:1 (o vermelho da marca mede 4.4:1). */
+  --destructive: #c22653;
   --destructive-foreground: #ffffff;
 
-  --success: #1d8a3e;
+  /* A marca não tem verde/amarelo: sucesso = azul, alerta = magenta. */
+  --success: #005996;
   --success-foreground: #ffffff;
-  --warning: #d99000;
-  --warning-foreground: #051a35;
+  --warning: #c22653;
+  --warning-foreground: #ffffff;
 
-  --border: #e8eaf0;
-  --input: #e8eaf0;
-  --ring: rgba(13, 74, 139, 0.15);
+  --border: #d4d3d3;
+  --input: #d4d3d3;
+  --ring: #005996;
 
-  --chart-1: #0d4a8b;
-  --chart-2: #1565b8;
-  --chart-3: #ed1c24;
-  --chart-4: #1d8a3e;
-  --chart-5: #6b7080;
+  /* Gráficos: cores da marca, diferentes também em luminosidade. */
+  --chart-cat-1: #005996;
+  --chart-cat-2: #89c5d3;
+  --chart-cat-3: #e61c24;
+  --chart-cat-4: #0c1d40;
+  --chart-cat-5: #c22653;
+  --chart-cat-6: #a6a6a6;
+  --chart-cat-7: #575756;
+  --chart-cat-8: #d4d3d3;
 
-  --sidebar: #f4f5f8;
-  --sidebar-foreground: #051a35;
-  --sidebar-primary: #0d4a8b;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #262626;
+  --sidebar-primary: #005996;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ed1c24;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #e8eaf0;
-  --sidebar-ring: rgba(13, 74, 139, 0.15);
+  --sidebar-accent: #eef4f9;
+  --sidebar-accent-foreground: #0c1d40;
+  --sidebar-border: #d4d3d3;
+  --sidebar-ring: #005996;
 
-  /* ── Custom properties da marca DEX (uso pontual) ── */
-  --dex-blue: #0d4a8b;
-  --dex-blue-dark: #051a35;
-  --dex-red: #ed1c24;
-  --dex-red-deep: #c0141b;
-  --grad-header: linear-gradient(90deg, #0d4a8b 0%, #051a35 100%);
-  --grad-blue: linear-gradient(135deg, #0d4a8b 0%, #1565b8 100%);
-  --shadow-card: 0 1px 3px rgba(5, 26, 53, 0.08), 0 1px 2px rgba(5, 26, 53, 0.04);
-  --shadow-modal: 0 10px 40px rgba(5, 26, 53, 0.18);
+  /* ── Tokens da marca para uso pontual em style={} ── */
+  --dex-azul: #005996;
+  --dex-vermelho: #e61c24;
+  --dex-marinho: #0c1d40;
+  --dex-ciano: #89c5d3;
+  --dex-cinza: #d4d3d3;
+  --dex-magenta: #c22653;
+  --dex-cinza-texto: #575756;
+  --dex-tint: #eef4f9;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    letter-spacing: 0;
+  }
+
+  /* Foco: anel sólido 2px dex-azul com 2px de afastamento. */
+  :focus-visible {
+    box-shadow:
+      0 0 0 2px var(--background),
+      0 0 0 4px var(--ring);
+  }
+}
+
+/* ── Componentes AppKit com a forma da marca ─────────────────────────
+   Regras fora de @layer para vencer os utilitários padrão dos componentes. */
+
+/* Botões: Barlow; primário com lateral direita a 14° e lasca ciano. */
+[data-slot="button"] {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: none;
+}
+
+[data-slot="button"].bg-primary {
+  padding-right: 1.9rem;
+  background-color: transparent;
+  background-image: linear-gradient(
+    104deg,
+    var(--dex-azul) calc(100% - 17px),
+    #ffffff calc(100% - 17px) calc(100% - 13px),
+    var(--dex-ciano) calc(100% - 13px)
+  );
+  clip-path: polygon(0 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+}
+
+[data-slot="button"].bg-primary:hover {
+  background-image: linear-gradient(
+    104deg,
+    var(--dex-marinho) calc(100% - 17px),
+    #ffffff calc(100% - 17px) calc(100% - 13px),
+    var(--dex-ciano) calc(100% - 13px)
+  );
+}
+
+/* clip-path cortaria o anel de foco: no foco o botão volta a ser retangular. */
+[data-slot="button"].bg-primary:focus-visible {
+  clip-path: none;
+  background-image: none;
+  background-color: var(--dex-marinho);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+[data-slot="button"].border.bg-background {
+  border-color: var(--dex-azul);
+  color: var(--dex-azul);
+}
+
+/* Campos: borda fina + base azul de 2px. */
+[data-slot="input"],
+[data-slot="select-trigger"],
+[data-slot="textarea"] {
+  border-bottom: 2px solid var(--dex-azul);
+  box-shadow: none;
+}
+
+[data-slot="input"][aria-invalid="true"],
+[data-slot="input"].border-destructive {
+  border-bottom-color: var(--destructive);
+}
+
+/* Abas: sublinhado vermelho na aba ativa, sem "pílula". */
+[data-slot="tabs-list"] {
+  height: auto;
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  width: 100%;
+  justify-content: flex-start;
+  overflow-x: auto;
+}
+
+[data-slot="tabs-trigger"] {
+  flex: 0 0 auto;
+  height: 44px;
+  padding: 0 1.25rem;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--dex-cinza-texto);
+  box-shadow: none;
+}
+
+[data-slot="tabs-trigger"][data-state="active"] {
+  color: var(--dex-azul);
+  border-bottom-color: var(--dex-vermelho);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* Cards e superfícies planas. */
+[data-slot="card"] {
+  box-shadow: none;
+}
+
+[data-slot="card-title"],
+[data-slot="dialog-title"],
+[data-slot="sheet-title"] {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--dex-azul);
+}
+
+/* Tabelas: cabeçalho Barlow em caixa alta com base azul. */
+[data-slot="table-header"] [data-slot="table-row"] {
+  border-bottom: 2px solid var(--dex-azul);
+}
+
+[data-slot="table-header"] [data-slot="table-row"]:hover {
+  background: transparent;
+}
+
+[data-slot="table-head"] {
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--dex-azul);
+}
+
+[data-slot="badge"] {
+  border-radius: 0;
+  font-weight: 600;
+}
+
+[data-slot="skeleton"] {
+  background-color: #eceff2;
+}
+
+/* Grade quase invisível do fundo da marca. */
+.dex-grid-bg {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(rgba(0, 89, 150, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 89, 150, 0.035) 1px, transparent 1px);
+  background-size: 40px 40px;
 }

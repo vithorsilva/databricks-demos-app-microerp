@@ -9,7 +9,7 @@ import {
   Input,
   Separator,
 } from '@databricks/appkit-ui/react';
-import { Settings, Trash2, Plus, Check } from 'lucide-react';
+import { TextAction } from '@/components/brand/index.js';
 import type { Pipeline, CreateStageBody, UpdateStageBody } from '@shared/crm/types.js';
 
 interface PipelineManagerProps {
@@ -41,9 +41,7 @@ export function PipelineManager(props: PipelineManagerProps) {
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <Settings className="mr-1 h-4 w-4" /> Gerenciar funil
-        </Button>
+        <Button variant="outline">Gerenciar funil</Button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
@@ -54,7 +52,7 @@ export function PipelineManager(props: PipelineManagerProps) {
           {/* Funil atual */}
           {current && (
             <div className="space-y-2">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Funil atual</p>
+              <p className="font-display text-xs font-bold tracking-[0.08em] text-dex-azul uppercase">Funil atual</p>
               <div className="flex items-center gap-2">
                 <Input value={pipelineName} onChange={(e) => setPipelineName(e.target.value)} className="flex-1" />
                 <Button
@@ -65,15 +63,9 @@ export function PipelineManager(props: PipelineManagerProps) {
                 >
                   Renomear
                 </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => deletePipeline(current.id)}
-                  aria-label="Excluir funil"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <TextAction tone="muted" onClick={() => deletePipeline(current.id)}>
+                  Excluir
+                </TextAction>
               </div>
             </div>
           )}
@@ -82,7 +74,7 @@ export function PipelineManager(props: PipelineManagerProps) {
 
           {/* Estágios */}
           <div className="space-y-2">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Estágios</p>
+            <p className="font-display text-xs font-bold tracking-[0.08em] text-dex-azul uppercase">Estágios</p>
             {(current?.stages ?? []).map((s) => (
               <StageRow
                 key={s.id}
@@ -110,7 +102,7 @@ export function PipelineManager(props: PipelineManagerProps) {
                   className="flex-1"
                 />
                 <Button type="submit" size="sm" disabled={!newStage.trim()}>
-                  <Plus className="mr-1 h-4 w-4" /> Estágio
+                  Adicionar
                 </Button>
               </form>
             )}
@@ -128,7 +120,7 @@ export function PipelineManager(props: PipelineManagerProps) {
               setNewPipeline('');
             }}
           >
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Novo funil</p>
+            <p className="font-display text-xs font-bold tracking-[0.08em] text-dex-azul uppercase">Novo funil</p>
             <div className="flex items-center gap-2">
               <Input
                 placeholder="Nome do funil"
@@ -137,7 +129,7 @@ export function PipelineManager(props: PipelineManagerProps) {
                 className="flex-1"
               />
               <Button type="submit" size="sm" disabled={!newPipeline.trim()}>
-                <Plus className="mr-1 h-4 w-4" /> Criar
+                Criar
               </Button>
             </div>
           </form>
@@ -173,25 +165,17 @@ function StageRow({
         onChange={(e) => setP(e.target.value)}
         className="w-20"
         title="Probabilidade (%)"
+        aria-label="Probabilidade (%)"
       />
-      <Button
-        size="icon"
-        variant="ghost"
+      <TextAction
         disabled={!dirty || !n.trim()}
         onClick={() => onSave(n.trim(), Math.max(0, Math.min(100, Number(p) || 0)))}
-        aria-label="Salvar estágio"
       >
-        <Check className="h-4 w-4" />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="text-muted-foreground hover:text-destructive"
-        onClick={onDelete}
-        aria-label="Excluir estágio"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+        Salvar
+      </TextAction>
+      <TextAction tone="muted" onClick={onDelete}>
+        Excluir
+      </TextAction>
     </div>
   );
 }

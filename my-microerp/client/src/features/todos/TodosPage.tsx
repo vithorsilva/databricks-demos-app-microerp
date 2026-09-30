@@ -1,14 +1,13 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Button,
-  Input,
-  Skeleton,
-} from '@databricks/appkit-ui/react';
+import { Button, Input, Skeleton } from '@databricks/appkit-ui/react';
 import { useState } from 'react';
-import { Check, X } from 'lucide-react';
+import {
+  PageHeader,
+  Panel,
+  FieldLabel,
+  ErrorBanner,
+  EmptyState,
+  TextAction,
+} from '@/components/brand/index.js';
 import { useTodos } from './hooks.js';
 
 export function TodosPage() {
@@ -30,95 +29,66 @@ export function TodosPage() {
   const completedCount = todos.filter((t) => t.completed).length;
 
   return (
-    <div className="space-y-6 w-full max-w-2xl mx-auto">
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle>Todo List</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-4">
-            A simple CRUD example powered by Databricks Lakebase (PostgreSQL).
-          </p>
+    <div className="mx-auto w-full max-w-3xl">
+      <PageHeader title="Tarefas" subtitle="Exemplo de CRUD sobre o Databricks Lakebase (PostgreSQL)." />
 
-          <form onSubmit={handleSubmit} className="flex gap-2 mb-6">
+      <Panel>
+        <form onSubmit={handleSubmit} className="mb-6 flex items-end gap-3">
+          <FieldLabel label="Nova tarefa" className="flex-1">
             <Input
-              placeholder="What needs to be done?"
+              placeholder="O que precisa ser feito?"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               disabled={submitting}
-              className="flex-1"
             />
-            <Button type="submit" disabled={submitting || !newTitle.trim()}>
-              {submitting ? 'Adding...' : 'Add'}
-            </Button>
-          </form>
+          </FieldLabel>
+          <Button type="submit" disabled={submitting || !newTitle.trim()}>
+            {submitting ? 'Adicionando...' : 'Adicionar'}
+          </Button>
+        </form>
 
-          {error && (
-            <div className="text-destructive bg-destructive/10 p-3 rounded-md mb-4">
-              {error}
-            </div>
-          )}
+        {error && <ErrorBanner message={error} className="mb-4" />}
 
-          {loading && (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }, (_, i) => (
-                <div key={`skeleton-${i}`} className="flex items-center gap-3">
-                  <Skeleton className="h-5 w-5 rounded" />
-                  <Skeleton className="h-4 flex-1" />
-                </div>
-              ))}
-            </div>
-          )}
+        {loading && (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }, (_, i) => (
+              <Skeleton key={`skeleton-${i}`} className="h-12 w-full" />
+            ))}
+          </div>
+        )}
 
-          {!loading && todos.length === 0 && (
-            <p className="text-muted-foreground text-center py-8">
-              No todos yet. Add one above to get started.
+        {!loading && todos.length === 0 && (
+          <EmptyState title="Nenhuma tarefa" hint="Adicione a primeira tarefa no campo acima." />
+        )}
+
+        {!loading && todos.length > 0 && (
+          <div className="space-y-2">
+            {todos.map((todo) => (
+              <div key={todo.id} className="flex items-center gap-3 border px-3 py-2 transition-colors hover:bg-dex-tint">
+                <input
+                  type="checkbox"
+                  checked={todo.completed}
+                  onChange={() => { void toggleTodo(todo.id); }}
+                  className="size-5 shrink-0 accent-dex-azul"
+                  aria-label={todo.completed ? `Reabrir: ${todo.title}` : `Concluir: ${todo.title}`}
+                />
+
+                <span className={`flex-1 ${todo.completed ? 'text-muted-foreground line-through' : ''}`}>
+                  {todo.title}
+                </span>
+
+                <TextAction tone="muted" onClick={() => { void deleteTodo(todo.id); }}>
+                  Excluir
+                </TextAction>
+              </div>
+            ))}
+
+            <p className="pt-2 text-xs text-muted-foreground">
+              {completedCount} de {todos.length} concluídas
             </p>
-          )}
-
-          {!loading && todos.length > 0 && (
-            <div className="space-y-2">
-              {todos.map((todo) => (
-                <div
-                  key={todo.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  <button
-                    type="button"
-                    onClick={() => { void toggleTodo(todo.id); }}
-                    className={`h-5 w-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                      todo.completed
-                        ? 'bg-primary border-primary text-primary-foreground'
-                        : 'border-muted-foreground/30 hover:border-primary'
-                    }`}
-                    aria-label={todo.completed ? 'Mark as incomplete' : 'Mark as complete'}
-                  >
-                    {todo.completed && <Check className="h-3 w-3" />}
-                  </button>
-
-                  <span className={`flex-1 ${todo.completed ? 'line-through text-muted-foreground' : ''}`}>
-                    {todo.title}
-                  </span>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { void deleteTodo(todo.id); }}
-                    className="text-muted-foreground hover:text-destructive shrink-0"
-                    aria-label="Delete todo"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-
-              <p className="text-xs text-muted-foreground pt-2">
-                {completedCount} of {todos.length} completed
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }
