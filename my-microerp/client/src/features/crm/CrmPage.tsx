@@ -306,6 +306,10 @@ function ContactsSection() {
   const [role, setRole] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [sex, setSex] = useState<'male' | 'female' | 'other' | 'not_informed'>('not_informed');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [country, setCountry] = useState('');
   const [editing, setEditing] = useState<Contact | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -317,12 +321,20 @@ function ContactsSection() {
       role: role.trim() || undefined,
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
+      sex,
+      city: city.trim() || undefined,
+      state: state.trim() || undefined,
+      country: country.trim() || undefined,
     }).then((created) => {
       if (created) {
         setName('');
         setRole('');
         setEmail('');
         setPhone('');
+        setSex('not_informed');
+        setCity('');
+        setState('');
+        setCountry('');
       }
     });
   };
@@ -355,10 +367,7 @@ function ContactsSection() {
       {companyId !== undefined && (
         <>
           <Panel title="Novo contato">
-            <form
-              onSubmit={handleSubmit}
-              className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_180px_220px_170px_auto]"
-            >
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 items-end gap-4 md:grid-cols-2 xl:grid-cols-4">
               <FieldLabel label="Nome">
                 <Input placeholder="Nome do contato" value={name} onChange={(e) => setName(e.target.value)} />
               </FieldLabel>
@@ -366,10 +375,37 @@ function ContactsSection() {
                 <Input placeholder="Ex.: Diretor de TI" value={role} onChange={(e) => setRole(e.target.value)} />
               </FieldLabel>
               <FieldLabel label="E-mail">
-                <Input type="email" placeholder="nome@empresa.com.br" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input
+                  type="email"
+                  placeholder="nome@empresa.com.br"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
               </FieldLabel>
               <FieldLabel label="Telefone">
                 <Input placeholder="(27) 00000-0000" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </FieldLabel>
+              <FieldLabel label="Sexo">
+                <Select value={sex} onValueChange={(value) => setSex(value as typeof sex)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="not_informed">Não informado</SelectItem>
+                    <SelectItem value="female">Feminino</SelectItem>
+                    <SelectItem value="male">Masculino</SelectItem>
+                    <SelectItem value="other">Outro</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FieldLabel>
+              <FieldLabel label="Cidade">
+                <Input placeholder="Cidade" value={city} onChange={(e) => setCity(e.target.value)} />
+              </FieldLabel>
+              <FieldLabel label="Estado">
+                <Input placeholder="Estado" value={state} onChange={(e) => setState(e.target.value)} />
+              </FieldLabel>
+              <FieldLabel label="País">
+                <Input placeholder="País" value={country} onChange={(e) => setCountry(e.target.value)} />
               </FieldLabel>
               <Button type="submit" className="justify-self-start" disabled={!name.trim()}>
                 Adicionar
@@ -393,6 +429,8 @@ function ContactsSection() {
                     <TableHead>Cargo</TableHead>
                     <TableHead>E-mail</TableHead>
                     <TableHead>Telefone</TableHead>
+                    <TableHead>Sexo</TableHead>
+                    <TableHead>Localização</TableHead>
                     <TableHead className="pr-4 text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -403,6 +441,14 @@ function ContactsSection() {
                       <TableCell>{c.role ?? '—'}</TableCell>
                       <TableCell>{c.email ?? '—'}</TableCell>
                       <TableCell>{c.phone ?? '—'}</TableCell>
+                      <TableCell>
+                        {
+                          { male: 'Masculino', female: 'Feminino', other: 'Outro', not_informed: 'Não informado' }[
+                            c.sex ?? 'not_informed'
+                          ]
+                        }
+                      </TableCell>
+                      <TableCell>{[c.city, c.state, c.country].filter(Boolean).join(', ') || '—'}</TableCell>
                       <TableCell className="pr-4">
                         <div className="flex items-center justify-end gap-1">
                           <TextAction onClick={() => setEditing(c)}>Editar</TextAction>
@@ -443,12 +489,26 @@ function ContactEditDialog({
 }: {
   contact: Contact | null;
   onOpenChange: (open: boolean) => void;
-  onSave: (id: number, body: { name: string; role?: string; email?: string; phone?: string }) => Promise<Contact | null>;
+  onSave: (
+    id: number,
+    body: {
+      name: string;
+      role?: string;
+      email?: string;
+      phone?: string;
+      sex?: Contact['sex'];
+      city?: string;
+      state?: string;
+      country?: string;
+    }
+  ) => Promise<Contact | null>;
 }) {
   return (
     <Dialog open={contact !== null} onOpenChange={onOpenChange}>
       <DialogContent>
-        {contact && <ContactEditForm key={contact.id} contact={contact} onSave={onSave} onClose={() => onOpenChange(false)} />}
+        {contact && (
+          <ContactEditForm key={contact.id} contact={contact} onSave={onSave} onClose={() => onOpenChange(false)} />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -460,13 +520,29 @@ function ContactEditForm({
   onClose,
 }: {
   contact: Contact;
-  onSave: (id: number, body: { name: string; role?: string; email?: string; phone?: string }) => Promise<Contact | null>;
+  onSave: (
+    id: number,
+    body: {
+      name: string;
+      role?: string;
+      email?: string;
+      phone?: string;
+      sex?: Contact['sex'];
+      city?: string;
+      state?: string;
+      country?: string;
+    }
+  ) => Promise<Contact | null>;
   onClose: () => void;
 }) {
   const [name, setName] = useState(contact.name);
   const [role, setRole] = useState(contact.role ?? '');
   const [email, setEmail] = useState(contact.email ?? '');
   const [phone, setPhone] = useState(contact.phone ?? '');
+  const [sex, setSex] = useState(contact.sex ?? 'not_informed');
+  const [city, setCity] = useState(contact.city ?? '');
+  const [state, setState] = useState(contact.state ?? '');
+  const [country, setCountry] = useState(contact.country ?? '');
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
@@ -477,6 +553,10 @@ function ContactEditForm({
       role: role.trim() || undefined,
       email: email.trim() || undefined,
       phone: phone.trim() || undefined,
+      sex,
+      city: city.trim() || undefined,
+      state: state.trim() || undefined,
+      country: country.trim() || undefined,
     });
     setSaving(false);
     if (updated) onClose();
@@ -499,6 +579,28 @@ function ContactEditForm({
         </FieldLabel>
         <FieldLabel label="Telefone">
           <Input value={phone} onChange={(e) => setPhone(e.target.value)} />
+        </FieldLabel>
+        <FieldLabel label="Sexo">
+          <Select value={sex} onValueChange={(value) => setSex(value as typeof sex)}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="not_informed">Não informado</SelectItem>
+              <SelectItem value="female">Feminino</SelectItem>
+              <SelectItem value="male">Masculino</SelectItem>
+              <SelectItem value="other">Outro</SelectItem>
+            </SelectContent>
+          </Select>
+        </FieldLabel>
+        <FieldLabel label="Cidade">
+          <Input value={city} onChange={(e) => setCity(e.target.value)} />
+        </FieldLabel>
+        <FieldLabel label="Estado">
+          <Input value={state} onChange={(e) => setState(e.target.value)} />
+        </FieldLabel>
+        <FieldLabel label="País">
+          <Input value={country} onChange={(e) => setCountry(e.target.value)} />
         </FieldLabel>
       </div>
       <DialogFooter>

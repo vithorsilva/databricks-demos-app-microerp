@@ -37,12 +37,14 @@ import type {
   OpportunityStageEnum,
   OpportunityStatusEnum,
   ActivityTypeEnum,
+  ContactSexEnum,
 } from './schemas.js';
 
 export type CompanyType = z.infer<typeof CompanyTypeEnum>;
 export type OpportunityStage = z.infer<typeof OpportunityStageEnum>;
 export type OpportunityStatus = z.infer<typeof OpportunityStatusEnum>;
 export type ActivityType = z.infer<typeof ActivityTypeEnum>;
+export type ContactSex = z.infer<typeof ContactSexEnum>;
 
 export type Company = z.infer<typeof CompanySchema>;
 export type CreateCompanyBody = z.infer<typeof CreateCompanyBodySchema>;
