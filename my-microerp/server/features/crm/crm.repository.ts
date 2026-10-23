@@ -62,6 +62,13 @@ const CREATE_CONTACTS_SQL = `
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )
 `;
+const ALTER_CONTACTS_SQL = `
+  ALTER TABLE crm.contacts
+    ADD COLUMN IF NOT EXISTS sex TEXT,
+    ADD COLUMN IF NOT EXISTS city TEXT,
+    ADD COLUMN IF NOT EXISTS state TEXT,
+    ADD COLUMN IF NOT EXISTS country TEXT
+`;
 const CREATE_PIPELINES_SQL = `
   CREATE TABLE IF NOT EXISTS crm.pipelines (
     id SERIAL PRIMARY KEY,
@@ -126,7 +133,7 @@ const DEFAULT_STAGES: { name: string; probability: number }[] = [
 ];
 
 const COMPANY_COLS = `id, name, type, tax_id, email, phone, notes, created_at::text`;
-const CONTACT_COLS = `id, company_id, name, role, email, phone, created_at::text`;
+const CONTACT_COLS = `id, company_id, name, role, email, phone, sex, city, state, country, created_at::text`;
 const STAGE_COLS = `id, pipeline_id, name, position, probability, created_at::text`;
 const ACTIVITY_COLS = `id, opportunity_id, type, subject, notes, due_date::text, done, created_at::text`;
 
@@ -151,6 +158,7 @@ export class CrmRepository {
       await this.db.query(SETUP_SCHEMA_SQL);
       await this.db.query(CREATE_COMPANIES_SQL);
       await this.db.query(CREATE_CONTACTS_SQL);
+      await this.db.query(ALTER_CONTACTS_SQL);
       await this.db.query(CREATE_PIPELINES_SQL);
       await this.db.query(CREATE_STAGES_SQL);
       await this.db.query(CREATE_OPPORTUNITIES_SQL);
@@ -313,10 +321,20 @@ export class CrmRepository {
   async createContact(body: CreateContactBody): Promise<Contact> {
     try {
       const { rows } = await this.db.query(
-        `INSERT INTO crm.contacts (company_id, name, role, email, phone)
-         VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO crm.contacts (company_id, name, role, email, phone, sex, city, state, country)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING ${CONTACT_COLS}`,
-        [body.company_id, body.name, body.role ?? null, body.email ?? null, body.phone ?? null]
+        [
+          body.company_id,
+          body.name,
+          body.role ?? null,
+          body.email ?? null,
+          body.phone ?? null,
+          body.sex ?? null,
+          body.city ?? null,
+          body.state ?? null,
+          body.country ?? null,
+        ]
       );
       return ContactSchema.parse(rows[0]);
     } catch (err) {
@@ -331,10 +349,24 @@ export class CrmRepository {
          name  = COALESCE($2, name),
          role  = COALESCE($3, role),
          email = COALESCE($4, email),
-         phone = COALESCE($5, phone)
+         phone = COALESCE($5, phone),
+         sex = COALESCE($6, sex),
+         city = COALESCE($7, city),
+         state = COALESCE($8, state),
+         country = COALESCE($9, country)
        WHERE id = $1
        RETURNING ${CONTACT_COLS}`,
-      [id, body.name ?? null, body.role ?? null, body.email ?? null, body.phone ?? null]
+      [
+        id,
+        body.name ?? null,
+        body.role ?? null,
+        body.email ?? null,
+        body.phone ?? null,
+        body.sex ?? null,
+        body.city ?? null,
+        body.state ?? null,
+        body.country ?? null,
+      ]
     );
     if (rows.length === 0) throw new AppError(404, 'Contact not found');
     return ContactSchema.parse(rows[0]);

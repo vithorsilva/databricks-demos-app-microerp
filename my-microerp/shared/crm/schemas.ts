@@ -5,6 +5,7 @@ export const CompanyTypeEnum = z.enum(['customer', 'supplier', 'both']);
 export const OpportunityStageEnum = z.enum(['lead', 'qualified', 'proposal', 'won', 'lost']);
 export const OpportunityStatusEnum = z.enum(['open', 'won', 'lost']);
 export const ActivityTypeEnum = z.enum(['call', 'email', 'meeting', 'task', 'note']);
+export const ContactSexEnum = z.enum(['male', 'female', 'other', 'not_informed']);
 
 // ── Companies ──────────────────────────────────────────────
 export const CompanySchema = z.object({
@@ -37,6 +38,10 @@ export const ContactSchema = z.object({
   role: z.string().nullable(),
   email: z.string().nullable(),
   phone: z.string().nullable(),
+  sex: ContactSexEnum.nullable(),
+  city: z.string().nullable(),
+  state: z.string().nullable(),
+  country: z.string().nullable(),
   created_at: z.string(),
 });
 
@@ -46,6 +51,10 @@ export const CreateContactBodySchema = z.object({
   role: z.string().max(120).nullish(),
   email: z.string().email().max(200).nullish(),
   phone: z.string().max(40).nullish(),
+  sex: ContactSexEnum.nullish(),
+  city: z.string().max(120).nullish(),
+  state: z.string().max(120).nullish(),
+  country: z.string().max(120).nullish(),
 });
 
 export const UpdateContactBodySchema = CreateContactBodySchema.partial();
